@@ -296,3 +296,14 @@ Relirium 全流程在浏览器中验证:
 - 桌面端通知升级为 Tauri plugin-notification
 - GalTransl-7B 等上游资源的 THIRD-PARTY 补充核对
 - v1.0 tag/GitHub Release(创建 release 是外向动作,待确认)
+
+## M6 补充:安装包实测(2026-09-12)
+
+- **NSIS 安装包产出**:GalTransl Desktop_0.1.0_x64-setup.exe(~80MB,含
+  backend exe/plugins/profiles/tools/res 全部 resources)
+- **静默安装实测 PASS**(/S /D=临时目录):目录结构完整;
+  **安装版后端冒烟 PASS**(version API + 三 profile 可读)
+- **发布卫生修正**:build_windows.py 排除 *.pdb/*.zip/**xp3brute.exe**
+  (许可未核实,政策为用户自备)后重打验证,tools/bin 只余
+  Xp3Pack.exe/msg_tool.exe/version.dll
+- 桌面端 Rust release 编译 PASS(1m53s,产物 galtransl-desktop.exe 11.7MB)

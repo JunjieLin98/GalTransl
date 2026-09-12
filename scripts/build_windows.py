@@ -36,6 +36,11 @@ ASSEMBLE_MAP = [
     (REPO / "res", RELEASE_APP / "res"),
 ]
 
+# 发布卫生:调试符号/压缩包副本不随包;xp3brute 许可未核实,政策为用户自备
+DIST_EXCLUDE = shutil.ignore_patterns(
+    "__pycache__", "*.pyc", "*.pyd", "*.pdb", "*.zip", "xp3brute.exe"
+)
+
 
 def run_pyi() -> Path:
     dist_dir = REPO / "release" / "pyi"
@@ -77,11 +82,7 @@ def assemble(exe: Path | None) -> None:
             continue
         if dst.exists():
             shutil.rmtree(dst)
-        shutil.copytree(
-            src,
-            dst,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyd"),
-        )
+        shutil.copytree(src, dst, ignore=DIST_EXCLUDE)
     print(f"[ok] 发布包就绪: {RELEASE_APP}")
     print("     Tauri bundle 经 tauri.conf.json 的 bundle.resources 引用该目录。")
 
