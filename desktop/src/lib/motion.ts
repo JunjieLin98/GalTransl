@@ -1,5 +1,5 @@
 /**
- * GalTransl Desktop — Motion Design Tokens & Utilities
+ * GalTransl Suite — Motion Design Tokens & Utilities
  *
  * Single source of truth for animation durations, easings, and motion helpers.
  * CSS animations should reference these values via CSS custom properties

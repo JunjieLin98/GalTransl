@@ -1,0 +1,50 @@
+# Unity 引擎适配(M5 最小版,实验性)
+# 范围:Mono/Il2Cpp 均可的数据层 TextAsset(内容为 JSON 数组或 TSV)。
+# 能力等级 L2:UnityPy 容器级写回经 spike 实测(M5,见 docs/research/unity-spike.md);
+#   仅 TextAsset 两类内容格式,其它资源/代码文本不支持。
+# Il2Cpp 注意:GameAssembly.dll 中的代码内嵌文本不在本 profile 范围,见
+#   docs/research/unity-il2cpp.md 的 XUAT 引导。
+profile: unity
+capability: L2
+translator_mode: ForGal-json
+
+detect:
+  # 典型 Unity 目录:<game>.exe + <game>_Data/(resources.assets 等)
+  archives:
+    - "*/resources.assets"
+    - "*/globalgamemanagers.assets"
+    - "*/data.unity3d"
+    - "*/sharedassets0.assets"
+  files: []
+  min_score: 1
+  hints:
+    - "*_Data"
+    - "*/GameAssembly.dll"   # 仅作引擎特征;数据层提取不受影响
+
+steps:
+  unpack:
+    tool: unity_tool
+    args: "copy {archive} {out_dir}"
+    # TextAsset 通常在 resources.assets / data.unity3d / sharedassets*.assets;
+    # 具体游戏用 per-game override 指定;部署时按文件名在游戏目录递归定位
+    archives:
+      - "*/resources.assets"
+      - "*/data.unity3d"
+      - "*/sharedassets0.assets"
+
+  extract:
+    tool: unity_tool
+    mode: file_loop
+    input_glob: "**/*.assets"
+    magic_filter: ""
+    args: "export {input} {out_file}"
+    # data.unity3d 等容器型文件需扩展 input_glob(override):加 "**/*.unity3d"
+
+  inject:
+    tool: unity_tool
+    mode: file_loop
+    args: "import {input} {trans_file} {patched}"
+
+  package:
+    # 强制备份:替换前把游戏目录原件复制到 backup/(restore 通用步骤可还原)
+    strategy: deploy

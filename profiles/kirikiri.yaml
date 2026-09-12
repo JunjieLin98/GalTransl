@@ -1,0 +1,62 @@
+# Kirikiri(krkr2/krkrz)引擎适配 — M0 实测参数固化版
+# 依据: docs/research/toolchain-verification.md / sample-games.md
+# 能力等级 L1: msg-tool 对 xp3/ks/scn 双向支持(实测 round-trip 通过)
+profile: kirikiri
+capability: L1
+translator_mode: ForGal-json
+
+detect:
+  archives: ["*.xp3"]
+  files: []
+  min_score: 2
+  hints:
+    - "Config.tjs"
+
+constraints:
+  encoding_in: shift-jis
+  encoding_mode: gbk        # 实测:SJIS 输出下简体字丢字,GBK 注入为默认档
+  max_text_length: null
+  ruby: false
+  font_check:
+    scripts: ["Config.tjs", "startup.tjs"]
+    keywords: ["defaultFont", "font.face"]
+
+steps:
+  unpack:
+    tool: msg-tool
+    args: "unpack -t kirikiri-xp3 {archive} {out_dir}"
+    # 默认仅解常见脚本封包,避免解出 bgm/video 大包;
+    # 其他封包用 per-game override 增加(如 "pac/*.ypf")
+    archives: ["data.xp3", "scenario*.xp3", "script*.xp3", "append*.xp3", "patch*.xp3", "unencrypted*.xp3"]
+    # 强加密 xp3:msg-tool 退出码 0 但零产物时回退用户自备解密工具
+    # (xp3brute 不随包分发,由用户放入 tools/bin 或 --tools-dir 指定)
+    encrypted_fallback:
+      tool: xp3brute
+      args: "unpack {archive} {out_dir}"
+
+  extract:
+    tool: msg-tool
+    mode: file_loop
+    # 标准命名场景脚本(krkrz scn);KS 变体游戏用 override 改:
+    #   input_glob: "**/*.ks" 且 args 换 "-t kirikiri"(见 README 示例)
+    input_glob: "**/*.scn"
+    magic_filter: ""          # 需按魔数过滤时用 per-game override(如 "PSB")
+    args: "export -t kirikiri-scn {input} {out_file}"
+
+  inject:
+    tool: msg-tool
+    mode: file_loop
+    args: "import -t kirikiri-scn --patched-encoding gbk {input} {trans_file} {patched}"
+
+  package:
+    strategy: patch_xp3
+    tool: xp3pack             # Xp3Pack <folder>:在 cwd 生成 <folder名>.xp3
+
+# 长尾兜底(SExtractor);M1 起按样例实测逐步启用
+fallback:
+  extraction:
+    tool: sextractor
+    note: "python run.py -e <dir> 静默模式 + text_conf.json 配置驱动"
+  injection:
+    tool: sextractor
+    note: "trans_replace 导入,受导入编码限制;失败明确降级 L3"

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────
-   GalTransl Desktop — Style Entry
+   GalTransl Suite — Style Entry
    ─────────────────────────────────────────────────────────
    This file aggregates all CSS from the styles/ directory.
    Do not add styles directly here — find the right layer below.
@@ -35,6 +35,7 @@
 @import './styles/components/stats-grid.css';
 
 /* ── 7. Page styles ── */
+@import './styles/pages/patch.css';
 @import './styles/pages/home.css';
 @import './styles/pages/translate.css';
 @import './styles/pages/settings.css';

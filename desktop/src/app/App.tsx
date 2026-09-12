@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { checkForUpdateSilent } from '../lib/desktop';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   CUSTOM_BACKGROUND_CHANGE_EVENT,
@@ -41,6 +42,16 @@ const CommonDictionaryPage = lazy(async () => {
 const NewProjectWizard = lazy(async () => {
   const mod = await import('../pages/NewProjectWizard');
   return { default: mod.NewProjectWizard };
+});
+
+const TranslationEditorPage = lazy(async () => {
+  const mod = await import('../pages/TranslationEditorPage');
+  return { default: mod.TranslationEditorPage };
+});
+
+const PatchWorkbenchPage = lazy(async () => {
+  const mod = await import('../pages/PatchWorkbenchPage');
+  return { default: mod.PatchWorkbenchPage };
 });
 
 const CONFIG_FILE_KEY = 'galtransl-config-file';
@@ -104,6 +115,11 @@ function clearLastActiveProject() {
 
 export function App() {
   const [openProjects, setOpenProjects] = useState<string[]>(() => loadOpenProjects());
+
+  // 启动时静默检查更新(仅 Tauri 打包态生效,dev 浏览器态自动跳过)
+  useEffect(() => {
+    void checkForUpdateSilent('0.1.0');
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -362,6 +378,22 @@ function AppInner({ openProjects, onOpenProject, onCloseProject, onCloseOtherPro
                 element={(
                   <Suspense fallback={<RouteLoadingFallback />}>
                     <PromptTemplatesPage />
+                  </Suspense>
+                )}
+              />
+              <Route
+                path="/patch"
+                element={(
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <PatchWorkbenchPage />
+                  </Suspense>
+                )}
+              />
+              <Route
+                path="/editor"
+                element={(
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <TranslationEditorPage />
                   </Suspense>
                 )}
               />

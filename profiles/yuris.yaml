@@ -1,0 +1,53 @@
+# Yu-ris 引擎适配 — M0 实测参数固化版
+# 依据: docs/research/sample-games.md 样例 2(Relirium)
+# 能力等级 L1: msg-tool 对 ypf 容器与 yuris-txt 脚本双向支持
+profile: yuris
+capability: L1
+translator_mode: ForGal-json
+
+detect:
+  archives: []
+  files: ["yscfg.dat"]
+  min_score: 1
+
+constraints:
+  encoding_in: shift-jis    # 场景文本实测 SJIS(yuris-txt -e cp932 可显式指定)
+  encoding_mode: gbk
+  max_text_length: null
+  ruby: false
+
+steps:
+  unpack:
+    tool: msg-tool
+    args: "unpack -t yuris-ypf {archive} {out_dir}"
+    # sc.ypf = 场景包(实测 245 个 scenario/*.txt);
+    # 其余 ypf(bgm/cg 等)默认不解,需要时 per-game override 增加
+    archives: ["pac/sc.ypf"]
+
+  extract:
+    tool: msg-tool
+    mode: file_loop
+    input_glob: "**/scenario/*.txt"   # 解包产物位于 work/unpacked/<封包名>/scenario/ 下
+    args: "export -t yuris-txt {input} {out_file}"
+
+  inject:
+    tool: msg-tool
+    mode: file_loop
+    args: "import -t yuris-txt {input} {trans_file} {patched}"
+
+  package:
+    strategy: repack_archive
+    tool: msg-tool
+    archive: sc.ypf
+    # -r 递归子目录;--yuris-ypf-version 500 为 Relirium 实测值(原包头 dword),
+    # 其他 Yu-ris 游戏用 per-game override 调整(读原包头部可判定)
+    pack_args: "pack -t yuris-ypf -r --yuris-ypf-version 500 {src_dir} {out_xp3}"
+    # 产物 dist/sc.ypf:替换游戏 pac/sc.ypf(安装说明中写明)
+
+fallback:
+  extraction:
+    tool: sextractor
+    note: "SExtractor 有 Yu-ris 预设"
+  injection:
+    tool: sextractor
+    note: "trans_replace 导入,受导入编码限制"

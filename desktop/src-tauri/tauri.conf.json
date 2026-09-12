@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "GalTransl Desktop",
-  "version": "0.1.0",
-  "identifier": "com.galtransl.desktop",
+  "productName": "GalTransl Suite",
+  "version": "1.0.1",
+  "identifier": "com.galtransl.suite",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "GalTransl Desktop",
+        "title": "GalTransl Suite",
         "width": 1360,
         "height": 900,
         "minWidth": 1100,
@@ -27,9 +27,26 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "nsis",
     "icon": [
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../../release/app/backend/": "backend/",
+      "../../release/app/plugins/": "plugins/",
+      "../../release/app/profiles/": "profiles/",
+      "../../release/app/tools/bin/": "tools/bin/",
+      "../../release/app/res/": "res/"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEzM0RCNzZGNjlBM0EzRgpSV1EvT3ByMmR0c3pBVzE5MjhXRmtMbkM3Y0dKQlluSEVacEdqc0VENzEwclZ4WWsyMlk5Z1FZcQo=",
+      "endpoints": [
+        "https://github.com/JunjieLin98/GalTransl/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

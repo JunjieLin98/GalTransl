@@ -904,12 +904,29 @@ class JobRegistry:
 def build_handler(registry: JobRegistry):
     class RequestHandler(BaseHTTPRequestHandler):
         def end_headers(self) -> None:
+            # galTrans: /api/pipeline/* 响应使用来源校验型 CORS(空串=抑制,防外来 Origin 读取);
+            # 其余响应保持上游行为(ACAO *)
+            gt_origin = getattr(self, "_gt_cors_origin", None)
+            if gt_origin is not None:
+                if gt_origin:
+                    self.send_header("Access-Control-Allow-Origin", gt_origin)
+                    self.send_header(
+                        "Access-Control-Allow-Headers", "Content-Type, X-Local-Token"
+                    )
+                super().end_headers()
+                return
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             super().end_headers()
 
         def do_OPTIONS(self) -> None:
+            # galTrans: 流水线路由的预检需放行 X-Local-Token 自定义头
+            if urlparse(self.path).path.startswith("/api/pipeline"):
+                from galtrans_pipeline.server_ext import handle_pipeline_options
+
+                handle_pipeline_options(self)
+                return
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
 
@@ -2117,6 +2134,13 @@ def build_handler(registry: JobRegistry):
             parsed = urlparse(self.path)
             path = parsed.path
 
+            # galTrans: 流水线扩展路由(Host 白名单与 token 鉴权在 server_ext 内实现)
+            if path.startswith("/api/pipeline"):
+                from galtrans_pipeline.server_ext import handle_pipeline_get
+
+                handle_pipeline_get(self, registry)
+                return
+
             if path == "/":
                 self._send_html(INDEX_HTML)
                 return
@@ -2218,6 +2242,13 @@ def build_handler(registry: JobRegistry):
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
             path = parsed.path
+
+            # galTrans: 流水线扩展路由(Host 白名单与 token 鉴权在 server_ext 内实现)
+            if path.startswith("/api/pipeline"):
+                from galtrans_pipeline.server_ext import handle_pipeline_post
+
+                handle_pipeline_post(self, registry)
+                return
 
             if path.startswith("/api/projects/"):
                 parts = path.split("/", 4)

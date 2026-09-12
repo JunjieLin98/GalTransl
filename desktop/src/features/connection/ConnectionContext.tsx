@@ -82,14 +82,14 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
         }
       };
 
-      await applyWindowTitle(`GalTransl Desktop - v${version}`);
+      await applyWindowTitle(`GalTransl Suite - v${version}`);
 
       fetchVersionCheck()
         .then(async (result) => {
           if (!result.update_available) {
             return;
           }
-          await applyWindowTitle(`GalTransl Desktop - v${result.version}（有新版本）`);
+          await applyWindowTitle(`GalTransl Suite - v${result.version}（有新版本）`);
         })
         .catch(() => undefined);
 

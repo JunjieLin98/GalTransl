@@ -21,3 +21,22 @@ app_settings.json
 galtransl_backend.spec
 /build
 /dist
+
+# galTrans fork additions
+/tools/bin/
+/docs/_drafts/
+/.zcode/
+
+# galtrans-pipeline
+galtrans_pipeline.egg-info/
+
+# 本地调试临时文件
+.gt-*.log
+.gt-run.json
+
+# 构建产物
+release/
+desktop/src-tauri/resources/
+
+# 更新签名私钥(绝不入库)
+.tauri/

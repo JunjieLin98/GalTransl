@@ -150,6 +150,10 @@ def _build_cache_obj(tran, post_save: bool = False):
     if post_save:
         cache_obj["post_dst_preview"] = tran.post_dst
 
+    # galTrans: 人工锁定标记透传回缓存 JSON（post_save 全量快照不丢字段）
+    if getattr(tran, "locked", False):
+        cache_obj["locked"] = True
+
     return cache_obj
 
 
@@ -446,7 +450,11 @@ async def get_transCache_from_json(
 
         no_proofread = _cache_get(cache_dict[cache_key], "proofread_dst") == ""
 
-        if no_proofread:
+        # galTrans: 人工锁定条目强制命中——即使 post_src 变化、缓存译文为空、
+        # 命中重试/重译关键字或校对模式，都不再送回翻译（人工终稿语义）。
+        entry_locked = bool(_cache_get(cache_dict[cache_key], "locked", False))
+
+        if no_proofread and not entry_locked:
             # post_src被改变
             if load_post_src == ignr_post_src == False:
                 if tran.post_src != _cache_get(cache_dict[cache_key], "post_src"):
@@ -501,6 +509,8 @@ async def get_transCache_from_json(
         tran.pre_dst = _cache_get(cache_dict[cache_key], "pre_dst")
         if "trans_by" in cache_dict[cache_key]:
             tran.trans_by = cache_dict[cache_key]["trans_by"]
+        # galTrans: 回填锁定标记，翻译后写缓存时透传保留
+        tran.locked = entry_locked
         if _cache_has(cache_dict[cache_key], "proofread_dst"):
             tran.proofread_zh = _cache_get(cache_dict[cache_key], "proofread_dst")
         if "proofread_by" in cache_dict[cache_key]:
@@ -519,8 +529,8 @@ async def get_transCache_from_json(
         else:
             tran.post_dst = tran.pre_dst
 
-        # 校对模式下，未校对的
-        if proofread and tran.proofread_zh == "":
+        # 校对模式下，未校对的（galTrans: 锁定条目视为终稿，同样不进校对队列）
+        if proofread and tran.proofread_zh == "" and not entry_locked:
             translist_unhit.append(tran)
             continue
 

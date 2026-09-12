@@ -8,6 +8,7 @@ tiktoken
 colorlog
 openpyxl
 orjson
+UnityPy
 beautifulsoup4
 playsound3
 fasttext-predict

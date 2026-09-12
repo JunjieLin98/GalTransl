@@ -44,6 +44,11 @@ class CSentense:
         self.doub_content = ""  # 用于记录疑问句的内容 For GPT4
         self.unknown_proper_noun = ""  # 用于记录未知的专有名词 For GPT4
 
+        # galTrans: 人工锁定标记（缓存命中后从缓存条目回填）。
+        # locked=True 的条目视为人工终稿：后续翻译/校对不再覆盖，
+        # 且写缓存时透传回 JSON（见 Cache._build_cache_obj）。
+        self.locked = False
+
         self.prev_tran: CSentense = None  # 指向上一个tran
         self.next_tran: CSentense = None  # 指向下一个tran
 

@@ -1,0 +1,176 @@
+.patch-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patch-page__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.patch-page__input {
+  flex: 1 1 320px;
+  min-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  background: var(--bg-input, #fff);
+  color: inherit;
+}
+
+.patch-page__detections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.patch-page__detection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.patch-page__muted {
+  opacity: 0.65;
+  font-size: 0.9em;
+}
+
+.patch-page__steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.patch-page__step {
+  min-width: 96px;
+}
+
+.patch-page__log {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-code, rgba(127, 127, 127, 0.08));
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.patch-page__error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+  white-space: pre-wrap;
+}
+
+.patch-page__capability {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ------------------------------------------------ 双语编辑器(M3,对齐上游 cache-page 设计语言) */
+.translation-editor-page .cache-search {
+  flex: 1 1 320px;
+}
+
+.patch-editor-layout {
+  height: auto;
+  min-height: 0;
+}
+
+.patch-editor-sidebar {
+  width: 280px;
+  min-width: 200px;
+}
+
+.patch-editor-file-list {
+  flex: 1;
+}
+
+.patch-editor-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.patch-editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.patch-editor-search {
+  flex: 0 1 280px;
+}
+
+.patch-editor-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.patch-editor-spacer {
+  flex: 1;
+}
+
+.patch-editor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.patch-editor-meta__text {
+  font-size: 13px;
+  color: var(--color-text-secondary, var(--color-text-muted, rgba(127, 127, 127, 0.9)));
+}
+
+.patch-editor-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 58vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.patch-editor-problem {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.patch-editor-problem:hover {
+  border-color: var(--color-warning, rgba(180, 83, 9, 0.6));
+}
+
+.patch-editor-locked {
+  border: 1px solid var(--color-primary-soft);
+}
+
+.patch-editor-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
