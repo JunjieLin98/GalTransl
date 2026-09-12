@@ -251,3 +251,48 @@ Relirium 全流程在浏览器中验证:
 - 真实 Unity 游戏全链路回归待样例(三款样例游戏均为 krkr/Yu-ris);
   TextAsset 内容格式的真实多样性是 L2"受限"的边界声明
 - data.unity3d 容器型文件需 per-game override 扩 input_glob(profile 注释已写)
+
+---
+
+# M6 进度:打包发布(进行中)
+
+## 已完成
+
+### 发布包布局与后端打包(实测通过)
+- **scripts/build_windows.py**:PyInstaller onefile(galtransl_backend.exe,
+  collect GalTransl/galtrans_pipeline 全部子模块)+ 组装发布布局:
+  ```
+  release/app/
+    backend/galtransl_backend.exe   ← Tauri 上游候选路径自动对齐
+    plugins/  profiles/  tools/bin/  res/
+  ```
+- 冻结态定位:run_backend.py 启动 chdir 到包根 + GALTRANS_TOOLS_DIR;
+  server_ext._app_root() 冻结分支取 exe 上级(plugins/res 相对路径、
+  profiles/tools 目录全部可达)
+- **冻结后端实测**:`/api/version` ✓;`/api/pipeline/profiles` 三个 profile
+  (kirikiri/unity/yuris)全部可读 ✓
+
+### Tauri 集成
+- tauri.conf.json:bundle.resources 把 release/app 各目录映射进安装包
+  (backend/plugins/profiles/tools/res),targets 收敛为 nsis
+- 上游 main.rs 的 backend_executable_candidates() 按 <exe>/backend/ 查找,
+  与我们的布局天然对齐,无需改 Rust 代码
+
+### 许可审计与文档
+- **THIRD-PARTY-NOTICES.md**:随包分发的 Python 库/外部工具/前端框架许可
+  汇编;msg-tool GPL 镜像附源码要求;xp3-brute/SExtractor/XUAT 用户自备声明;
+  PyInstaller 特殊例外说明;DumpInjector 许可澄清记录
+- **docs/user-guide.md**:新手手册(准备→连接→后端配置→流水线→编辑器→
+  术语向导→排队→FAQ→合规)
+- README 顶部插入分支说明(保留上游内容)
+
+### CI
+- 新增 package-backend job:Windows runner 上构建发布布局 + 冻结后端
+  冒烟(version API + profiles)+ 上传 artifact
+
+## M6 剩余(发布就绪后的收尾)
+- Tauri NSIS 安装包本地/CI 产出(cargo 构建进行中)
+- 自动更新:Tauri updater 插件 + minisign 密钥(GitHub Releases 源)
+- 桌面端通知升级为 Tauri plugin-notification
+- GalTransl-7B 等上游资源的 THIRD-PARTY 补充核对
+- v1.0 tag/GitHub Release(创建 release 是外向动作,待确认)

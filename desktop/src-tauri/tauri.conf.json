@@ -27,9 +27,16 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "nsis",
     "icon": [
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../../release/app/backend/": "backend/",
+      "../../release/app/plugins/": "plugins/",
+      "../../release/app/profiles/": "profiles/",
+      "../../release/app/tools/bin/": "tools/bin/",
+      "../../release/app/res/": "res/"
+    }
   }
 }

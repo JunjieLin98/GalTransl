@@ -11,6 +11,21 @@
    
    <img width="2044" height="1397" alt="image" src="https://github.com/user-attachments/assets/f85e4782-e53e-4b03-ae24-cd77b453c6e3" />
 
+## 本分支(GalTransl Desktop 增强版)
+
+> 本仓库是 GalTransl 的 fork,在其之上构建**通用汉化套件**:拖入游戏目录,
+> 自动识别引擎、提取文本、LLM 翻译、回封产出中文补丁。
+> 相比上游的增量:多引擎自动编排(Kirikiri L1 / Yu-ris L1 / Unity TextAsset L2 实验)、
+> 缓存人工锁定与双语对照编辑器、术语一键提取向导、任务队列与系统通知、
+> 后端安全加固(Host 白名单/本地 token/CORS 收敛)、错误码可行动指引。
+>
+> - 新手从这里开始:**[用户手册](docs/user-guide.md)**
+> - 架构与需求文档:docs/{requirements,architecture,development-plan}.md
+> - 第三方许可:**[THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES.md)**(整体 GPL-3.0)
+> - CLI:`galtrans detect/profiles/init/run/patch/restore`(`pip install -e .` 后可用)
+
+---
+
 ## 前言
 &ensp;&ensp;&ensp;&ensp;GalTransl的核心是一组自动化翻译脚本，解决了使用ChatGPT自动化翻译Gal过程中已知的大部分问题，并提高了整体的翻译质量。同时，通过与其他项目的组合，打通了制作补丁的完整流程，一定程度降低了上手门槛。对此感兴趣的朋友可以通过本项目更容易的构建具有一定质量的机翻补丁，并(或许)可以尝试在此框架的基础上高效的构建更高质量的汉化补丁。  
 

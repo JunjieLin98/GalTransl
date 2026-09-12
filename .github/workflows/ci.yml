@@ -47,3 +47,46 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: npm run build
+
+  package-backend:
+    # M6:后端单文件 exe 冒烟(PyInstaller 产物启动 + API 可达 + profiles 可读)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt -e . pyinstaller
+      - name: Build release layout
+        run: python scripts/build_windows.py
+        env:
+          PYTHONIOENCODING: utf-8
+      - name: Smoke test frozen backend
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath "release/app/backend/galtransl_backend.exe" `
+            -ArgumentList "--port","12401" -PassThru -WindowStyle Hidden
+          try {
+            $ok = $false
+            foreach ($i in 1..30) {
+              Start-Sleep -Seconds 2
+              try {
+                $v = Invoke-RestMethod "http://127.0.0.1:12401/api/version" -TimeoutSec 5
+                if ($v.version) { $ok = $true; break }
+              } catch {}
+            }
+            if (-not $ok) { throw "frozen backend did not respond" }
+            $p = Invoke-RestMethod "http://127.0.0.1:12401/api/pipeline/profiles" `
+              -Headers @{ Origin = "http://127.0.0.1:1420" } -TimeoutSec 5
+            if (-not $p.profiles -or $p.profiles.Count -lt 3) { throw "profiles missing in frozen build" }
+            Write-Host "frozen backend OK, profiles: $($p.profiles.Count)"
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: galtransl-backend-windows
+          path: release/app/
+          retention-days: 7

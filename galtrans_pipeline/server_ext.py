@@ -18,6 +18,7 @@ import json
 import os
 import queue
 import secrets
+import sys
 import threading
 import time
 from http import HTTPStatus
@@ -32,7 +33,18 @@ from .runner import ProcessRunner
 from .toolbox import ToolBox
 
 # ---------------------------------------------------------------- 仓库定位
-REPO_ROOT = Path(__file__).resolve().parent.parent
+def _app_root() -> Path:
+    """仓库根(开发态)/ 发布包根(冻结态:backend/galtransl_backend.exe 的上级)。
+
+    发布布局(见 scripts/build_windows.py):
+      app/{GalTransl Desktop.exe, backend/, plugins/, profiles/, tools/bin/, res/}
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent.parent
+    return Path(__file__).resolve().parent.parent
+
+
+REPO_ROOT = _app_root()
 PROFILES_DIR = REPO_ROOT / "profiles"
 DEFAULT_TOOLS_DIR = REPO_ROOT / "tools" / "bin"
 
