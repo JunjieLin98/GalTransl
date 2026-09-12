@@ -84,55 +84,44 @@
   gap: 4px;
 }
 
-/* ------------------------------------------------ 双语对照编辑器(M3) */
-.patch-editor__files {
+/* ------------------------------------------------ 双语编辑器(M3,对齐上游 cache-page 设计语言) */
+.translation-editor-page .cache-search {
+  flex: 1 1 320px;
+}
+
+.patch-editor-layout {
+  height: auto;
+  min-height: 0;
+}
+
+.patch-editor-sidebar {
+  width: 280px;
+  min-width: 200px;
+}
+
+.patch-editor-file-list {
+  flex: 1;
+}
+
+.patch-editor-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-.patch-editor__file {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-
-.patch-editor__file:hover {
-  background: rgba(127, 127, 127, 0.08);
-}
-
-.patch-editor__file.is-active {
-  border-color: var(--accent-color, #4a7dff);
-  background: rgba(74, 125, 255, 0.08);
-}
-
-.patch-editor__file-name {
-  font-family: 'Cascadia Mono', Consolas, monospace;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.patch-editor__toolbar {
+.patch-editor-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--space-2);
 }
 
-.patch-editor__search {
+.patch-editor-search {
   flex: 0 1 280px;
 }
 
-.patch-editor__check {
+.patch-editor-check {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -140,127 +129,48 @@
   white-space: nowrap;
 }
 
-.patch-editor__spacer {
+.patch-editor-spacer {
   flex: 1;
 }
 
-.patch-editor__grid {
+.patch-editor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.patch-editor-meta__text {
+  font-size: 13px;
+  color: var(--color-text-secondary, var(--color-text-muted, rgba(127, 127, 127, 0.9)));
+}
+
+.patch-editor-card-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 60vh;
+  gap: var(--space-2);
+  max-height: 58vh;
   overflow-y: auto;
   padding-right: 4px;
 }
 
-.patch-editor__row {
-  display: grid;
-  grid-template-columns: 44px 90px minmax(160px, 1fr) minmax(200px, 1.2fr) 44px 70px;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 8px;
+.patch-editor-problem {
+  cursor: pointer;
   border: 1px solid transparent;
-  font-size: 13px;
 }
 
-.patch-editor__row:hover {
-  background: rgba(127, 127, 127, 0.06);
+.patch-editor-problem:hover {
+  border-color: var(--color-warning, rgba(180, 83, 9, 0.6));
 }
 
-.patch-editor__row--head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--bg-panel, rgba(30, 30, 30, 0.92));
-  font-weight: 600;
-  border-bottom: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
-  border-radius: 0;
+.patch-editor-locked {
+  border: 1px solid var(--color-primary-soft);
 }
 
-.patch-editor__src {
-  position: relative;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
-}
-
-.patch-editor__problem {
-  margin-left: 6px;
-  font-style: normal;
-  color: #d9a13c;
-  cursor: help;
-}
-
-.patch-editor__dst {
-  width: 100%;
-  min-height: 44px;
-  resize: vertical;
-  padding: 5px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: 1.45;
-}
-
-.patch-editor__dst:focus {
-  border-color: var(--accent-color, #4a7dff);
-  outline: none;
-}
-
-.patch-editor__state {
-  font-size: 12px;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
-  white-space: nowrap;
-}
-
-.patch-editor__state.has-error {
-  color: #e05555;
-}
-
-.patch-editor__pager {
+.patch-editor-pager {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin-top: 12px;
-}
-
-.patch-editor__problem {
-  margin-left: 6px;
-  padding: 1px 6px;
-  font-style: normal;
-  font-size: 12px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  color: #d9a13c;
-  background: transparent;
-}
-
-.patch-editor__problem:hover {
-  border-color: rgba(217, 161, 60, 0.5);
-}
-
-.patch-editor__problem.pstatus-confirmed {
-  color: #e08a2e;
-  background: rgba(224, 138, 46, 0.12);
-}
-
-.patch-editor__problem.pstatus-ignored {
-  color: var(--text-secondary, rgba(255, 255, 255, 0.55));
-  background: rgba(127, 127, 127, 0.12);
-  text-decoration: line-through;
-}
-
-.patch-glossary__row {
-  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr) 70px;
-}
-
-.patch-glossary__row .patch-editor__dst {
-  min-height: 30px;
-  height: 30px;
-  resize: none;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { PageHeader } from '../components/PageHeader';
+import { CustomSelect } from '../components/CustomSelect';
+import { EmptyState, InlineFeedback } from '../components/page-state';
 import { Panel } from '../components/Panel';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
@@ -41,6 +43,7 @@ const STEP_LABELS: Record<string, string> = {
 export function PatchWorkbenchPage() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [gameDir, setGameDir] = useState('');
   const [projectDir, setProjectDir] = useState('');
   const [detections, setDetections] = useState<Detection[]>([]);
@@ -129,6 +132,7 @@ export function PatchWorkbenchPage() {
       const st = await fetchPipelineStatus(project_dir);
       setStatus(st);
       void refreshGlossary(project_dir);
+      setSuccess(`工程已创建:${project_dir}(引擎 ${profile})`);
       appendLog(`工程已创建:${project_dir}(引擎 ${profile})`);
     } catch (err) {
       setError(err instanceof PipelineApiError ? `${err.code}: ${err.message}` : String(err));
@@ -291,7 +295,12 @@ export function PatchWorkbenchPage() {
         description="拖入游戏目录,自动识别引擎、提取文本、AI 翻译并产出中文补丁。"
       />
 
-      {error && <div className="patch-page__error">{error}</div>}
+      {error && (
+        <InlineFeedback tone="error" title="操作失败" description={error} onDismiss={() => setError('')} />
+      )}
+      {success && (
+        <InlineFeedback tone="success" title="操作成功" description={success} onDismiss={() => setSuccess('')} />
+      )}
 
       {!ready ? (
         <Panel title="连接后端">
@@ -333,7 +342,7 @@ export function PatchWorkbenchPage() {
             )}
             {profiles.length > 0 && (
               <div className="patch-page__row">
-                <select
+                <CustomSelect
                   className="patch-page__input"
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
@@ -343,7 +352,7 @@ export function PatchWorkbenchPage() {
                       {profile.profile}(能力等级 {profile.capability})
                     </option>
                   ))}
-                </select>
+                </CustomSelect>
                 <Button
                   disabled={!gameDir || !profileName || running}
                   onClick={() => void handleCreateProject()}

@@ -327,3 +327,36 @@ Relirium 全流程在浏览器中验证:
   启动静默更新检查(App.tsx 挂载,dev 态跳过)
 - 已知边界:minisign 私钥空口令(本机生成,建议发布前轮换并加口令);
   检查更新只提示不自动安装(MVP)
+
+---
+
+# GUI 对齐上游设计语言(2026-09-12)
+
+## 动机
+
+新增的补丁工作台/双语编辑器最初用了自造样式(自造网格、自造错误条),
+与上游原生页面(项目缓存页 1888 行的成熟设计)存在视觉与交互断层。
+
+## 改造内容
+
+### 双语编辑器 → 上游 ProjectCachePage 风格(重构)
+- **直接复用上游样式类**(styles 自动生效):cache-card 卡片、cache-card__pill
+  徽章体系(speaker 配色 pill 经 speakerStyle() 来自上游 lib/speaker)、
+  cache-layout 侧栏、cache-sidebar-tab 页签、cache-file-item 文件列表、
+  cache-search 搜索输入、search-highlight 高亮
+- **page-state 三件套**:InlineFeedback(带图标的 toast,替代自造错误 div)、
+  EmptyState(替代自造提示段落)、LoadingState
+- **侧栏页签**:文件 / 问题(全工程问题计数徽标,点击跳转并自动开启问题筛选)
+- 控制字符转义(\r\n 显示)与上游一致
+- 保留全部 M3 业务逻辑:锁定写回/问题状态循环/合并日志/重建输出/分页
+
+### 补丁工作台 → 上游组件对齐
+- profile 下拉换上游 CustomSelect;错误/成功提示换 InlineFeedback
+
+### 样式
+- patch.css 删除自造网格样式,改为基于上游设计 token
+  (--color-surface-strong/--radius-card/--space-*)的少量补充类
+
+## 验证
+- npm build 通过;浏览器实测:编辑器页侧栏页签/文件列表/卡片徽章/
+  toast 提示全部按上游风格渲染,工作台 CustomSelect 正常
