@@ -498,3 +498,36 @@ README 此前沿用上游原文(上游徽章/前言/教程链接),与"通用汉�
 - 快速开始:桌面安装包 + CLI 示例
 - **上游关系章节:fork 致谢 XD2333、GPL-3.0 继承、UPSTREAM.md、上游教程/模型仍适用**
 - 合规(AI 翻译标注要求沿用上游规范)、已知边界、文档索引
+
+---
+
+# v1.0.1 发布(2026-09-13)
+
+## 发布内容
+
+- **fix(unpack)**:强加密 xp3 零产物自动回退用户自备 xp3brute(前次会话)
+- **brand**:定名 GalTransl Suite,README 中英重写,版本 1.0.1
+
+## 发布过程拦截的坏包(重要教训)
+
+- 用**系统 Python**(C:\Python313)跑 build_windows.py,PyInstaller 产出缺
+  orjson 的 16.3MB 坏后端(正确 39.9MB,差 23MB)——直接启动即
+  ModuleNotFoundError。**v1.0.0 的 39.9MB 是 venv 打的**;构建解释器必须
+  与安装依赖的环境一致。
+- 防呆:build_windows.py 新增 `_assert_runtime_deps()`(orjson/yaml/UnityPy/
+  openai/PyInstaller 缺一即快速失败)
+- 拦截手段:**冻结后端真实管线冒烟**(启动冻结 exe → API 建工程 →
+  跑 UNPACK+EXTRACT)——UNPACK 3s 完成(マガルミナ data.xp3 加密 key
+  自动加载,1584 文件 424MB),EXTRACT done 226 JSON(append 真名 scn 链;
+  data/ 哈希名无扩展名需 per-game override,与打包无关)
+- 安装包体积回归检查:34.8MB(坏)→ 58.5MB(好)
+
+## 发布动作
+
+- tag **v1.0.1**(develop 53b9417)→ push →
+  `gh release create v1.0.1 -R JunjieLin98/GalTransl --latest`
+- 资产 5 件:GalTransl.Suite_1.0.1_x64-setup.exe(58.5MB,签名)+ .sig +
+  latest.json(点号 URL)+ SHA256SUMS.txt + msg-tool 源码包
+- **验证**:updater 通道 `releases/latest/download/latest.json` 已下发
+  version=1.0.1 + 点号直链 + minisign 签名;安装包直链 200
+- v1.0.0 客户端(更新只提示)将收到 1.0.1 提示——更新通道首次真实闭环

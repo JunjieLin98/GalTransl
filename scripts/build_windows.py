@@ -42,7 +42,25 @@ DIST_EXCLUDE = shutil.ignore_patterns(
 )
 
 
+def _assert_runtime_deps() -> None:
+    """防呆:必须用装好 requirements 的解释器(如项目 venv)构建,
+    否则 PyInstaller 产出缺依赖的坏包(实测系统 Python 缺 orjson 静默缩小 23MB)。"""
+    missing = []
+    for module in ("orjson", "yaml", "UnityPy", "openai", "PyInstaller"):
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(module)
+    if missing:
+        raise SystemExit(
+            f"当前解释器缺少依赖: {', '.join(missing)};"
+            "请用安装了 requirements.txt 的环境运行本脚本"
+            "(如 .venv/Scripts/python.exe scripts/build_windows.py)"
+        )
+
+
 def run_pyi() -> Path:
+    _assert_runtime_deps()
     dist_dir = REPO / "release" / "pyi"
     build_dir = REPO / "release" / "pyi_build"
     cmd = [
