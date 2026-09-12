@@ -227,3 +227,40 @@
   gap: 14px;
   margin-top: 12px;
 }
+
+.patch-editor__problem {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-style: normal;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: #d9a13c;
+  background: transparent;
+}
+
+.patch-editor__problem:hover {
+  border-color: rgba(217, 161, 60, 0.5);
+}
+
+.patch-editor__problem.pstatus-confirmed {
+  color: #e08a2e;
+  background: rgba(224, 138, 46, 0.12);
+}
+
+.patch-editor__problem.pstatus-ignored {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+  background: rgba(127, 127, 127, 0.12);
+  text-decoration: line-through;
+}
+
+.patch-glossary__row {
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr) 70px;
+}
+
+.patch-glossary__row .patch-editor__dst {
+  min-height: 30px;
+  height: 30px;
+  resize: none;
+}

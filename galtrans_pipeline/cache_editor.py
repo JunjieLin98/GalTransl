@@ -24,6 +24,53 @@ import orjson
 from .errors import PipelineError
 
 APPEND_SUFFIX = ".append.jsonl"
+PROBLEM_STATUS_FILE = "problem_status.json"
+_VALID_PROBLEM_STATUS = ("", "confirmed", "ignored")
+
+
+def _problem_status_path(project) -> Path:
+    """问题状态表(独立文件,零上游侵入):{缓存文件名: {index: confirmed|ignored}}。"""
+    return project.subdir("work/gt_project") / PROBLEM_STATUS_FILE
+
+
+def load_problem_status(project) -> dict[str, dict[str, str]]:
+    path = _problem_status_path(project)
+    if not path.exists():
+        return {}
+    try:
+        data = orjson.loads(path.read_bytes())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_problem_status(project, table: dict[str, dict[str, str]]) -> None:
+    path = _problem_status_path(project)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(orjson.dumps(table, option=orjson.OPT_INDENT_2))
+    os.replace(tmp, path)
+
+
+def set_problem_status(project, name: str, index: int, status: str) -> dict[str, Any]:
+    """设置问题状态:confirmed(确认有问题,待处理)/ ignored(忽略)/ ""(清除)。"""
+    if status not in _VALID_PROBLEM_STATUS:
+        raise PipelineError(
+            "E-CACHE-EDIT-INVALID",
+            f"非法问题状态: {status!r}(可用: confirmed / ignored / 空)",
+        )
+    table = load_problem_status(project)
+    file_table = table.get(name) or {}
+    if status:
+        file_table[str(index)] = status
+    else:
+        file_table.pop(str(index), None)
+    if file_table:
+        table[name] = file_table
+    else:
+        table.pop(name, None)
+    save_problem_status(project, table)
+    return {"file": name, "index": index, "status": status}
 
 
 def cache_dir(project) -> Path:
@@ -145,6 +192,7 @@ def load_entries(
     page = max(1, int(page))
     page_size = min(1000, max(1, int(page_size)))
     start = (page - 1) * page_size
+    status_table = load_problem_status(project).get(path.name, {})
     rows = [
         {
             "index": e.get("index"),
@@ -155,6 +203,7 @@ def load_entries(
             "proofread_dst": e.get("proofread_dst", ""),
             "locked": bool(e.get("locked")),
             "problem": e.get("problem", ""),
+            "problem_status": status_table.get(str(e.get("index")), ""),
         }
         for e in filtered[start : start + page_size]
     ]

@@ -134,6 +134,30 @@ status, body = call("POST", "/api/pipeline/cache/entry", {"project": relirium, "
 check("cache entry invalid file -> 400", status == 400, f"{status}")
 
 
+# 11. M4 问题状态端点
+status, body = call(
+    "POST", "/api/pipeline/cache/problem-status",
+    {"project": relirium, "file": "sc__scenario__00_tr.txt.json", "index": 1, "status": "confirmed"},
+    headers={"X-Local-Token": TOKEN},
+)
+check("problem status set", status == 200 and body.get("status") == "confirmed", str(body)[:120])
+
+status, body = call(
+    "GET",
+    "/api/pipeline/cache/entries?project=" + relirium_q + "&file=sc__scenario__00_tr.txt.json&problem=1",
+    headers={"X-Local-Token": TOKEN},
+)
+statuses = [e.get("problem_status") for e in body.get("entries", [])]
+check("entries carry problem_status", status == 200 and "confirmed" in statuses, str(statuses)[:80])
+
+# 12. M4 术语草稿端点(空工程草稿读取不炸)
+status, body = call(
+    "GET", "/api/pipeline/glossary?project=" + relirium_q,
+    headers={"X-Local-Token": TOKEN},
+)
+check("glossary state", status == 200 and isinstance(body.get("draft"), list), f"draft={len(body.get('draft', []))}")
+
+
 failed = [name for name, ok, _ in RESULTS if not ok]
 print()
 print(f"套件结果: {len(RESULTS) - len(failed)}/{len(RESULTS)} 通过; 失败: {failed or '无'}")

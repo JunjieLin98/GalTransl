@@ -16,9 +16,41 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 LINE_RE = re.compile(r"([A-Za-z0-9]{3})\|(\{.*\})")
+KATAKANA_RE = re.compile(r"[ァ-ヴー・]{2,}")
+
+
+NAME_HINT_RE = re.compile(r"要加入术语表[:：]\s*\n(.+)")
+
+
+def fake_gendic(user_content: str) -> str:
+    """GenDic 模式:优先输出 hint 段里的人名(note=人名,单票即保留),
+    再补片假名抽取;与上游 _build_final_list 的过滤规则对齐。"""
+    lines = []
+    seen = set()
+    hint = NAME_HINT_RE.search(user_content)
+    if hint:
+        for name in hint.group(1).splitlines():
+            name = name.strip()
+            if name and name not in seen:
+                seen.add(name)
+                lines.append(f"{name}\t伪名{len(lines) + 1}\t人名")
+    for match in KATAKANA_RE.finditer(user_content):
+        word = match.group(0)
+        if word in seen:
+            continue
+        seen.add(word)
+        lines.append(f"{word}\t伪词{len(lines) + 1}\t术语注释")
+        if len(lines) >= 12:
+            break
+    if not lines:
+        return "NULL\tNULL"
+    return "\n".join(lines)
 
 
 def fake_translate(user_content: str) -> str:
+    # ForGal-json 请求含 jsonline 行;否则视为 GenDic 纯文本任务
+    if not LINE_RE.search(user_content):
+        return fake_gendic(user_content)
     out_lines = []
     for raw in user_content.splitlines():
         line = raw.strip()

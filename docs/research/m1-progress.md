@@ -154,3 +154,57 @@ Relirium 全流程在浏览器中验证:
 ## M3 剩余(按开发计划)
 - 术语向导(M3 计划内第三项)
 - 编辑器增强:虚拟滚动(当前分页)、问题列跳转上游找错面板(M4 集成后)
+
+---
+
+# M4 进度:智能化集成(问题状态/术语向导/任务队列+通知)
+
+## 已完成
+
+### FR-D6 问题状态管理
+- `problem_status.json`(work/gt_project 下,独立文件,零上游侵入):
+  {缓存文件名: {index: confirmed|ignored}}
+- cache_editor: load/save/set_problem_status;load_entries 行内带 problem_status
+- 端点 POST /api/pipeline/cache/problem-status(活跃任务时 409)
+- 编辑器 UI:问题 ⚠ 变为可点按钮,循环切换 确认→忽略→清除,
+  样式区分(confirmed 橙底/ignored 灰+删除线),title 显示问题原文
+
+### FR-D7 术语一键提取向导
+- glossary.py:run_gendic(调上游 GenDic,translator 模式)/read_draft/read_confirmed/
+  confirm_entries(TSV 写正式字典)
+- **上游原生集成,零 config 修改**:GenDic 草稿「项目GPT字典-生成.txt」与确认后
+  「项目GPT字典.txt」均在上游默认 config 的 dictionary.gpt.dict 引用链中,
+  下次翻译自动作为人设/代词约束生效(上游原生入口同样可用 → DoD)
+- mock_llm.py 支持 GenDic 协议:解析人名 hint(note=人名,与上游
+  _build_final_list 的单票保留规则对齐)+ 片假名抽取
+- 工作台 ③ 术语向导面板:提取(SSE 进度)→ 草稿表(可编辑/删除,前 100 条)
+  → 一键确认生效
+- **E2E:Relirium 47266 句 → GenDic 真实分词(vaporetto)+mock LLM → 草稿 811 条
+  (含トワ/リゼット等角色名)→ 确认 100 条 → 正式字典落盘 ✓**
+
+### FR-F7 任务队列与完成通知
+- PipelineManager:allow_queue 入队(_run_queue),job 完成 finally 中
+  _drain_queue 自动启动下一个;SSE 事件 job_queued/queue_updated
+- POST run 响应 {queued, queue_position} / {job_id}
+- 前端:run 时自动带 queue=true,排队时日志显示队列位置;
+  job_done/job_failed 触发系统通知(Web Notification API,
+  Tauri WebView2 原生支持;@tauri-apps/plugin-notification 插件留 M6 打包时统一接)
+- **E2E:两个 PACKAGE 任务,第一个直接执行、第二个排队并在第一个完成后
+  自动执行 ✓**(queued:true, queue_position:1)
+
+### 附带修复
+- POST /projects 幂等:工程目录已有 project.yaml 时改为打开而非覆盖
+  (原实现会清空步骤状态,工作台刷新后无法恢复工程)
+- PatchWorkbenchPage:工程打开时加载术语草稿;refreshGlossary 声明顺序修正
+
+## 测试
+- 单元 test_glossary.py 7 项(问题状态 roundtrip/非法值/条目透传;
+  术语确认去重/TSV 解析/缺 config 错误指引)
+- live 套件扩至 18 项(problem-status 设置/entries 透传/glossary 状态)全部通过
+- 全量 37/37;前端 build 通过
+
+## M4 诚实边界
+- 问题状态目前是"标注+筛选"层;与上游 retran_key-by-problem 重翻联动的
+  深度整合(忽略的问题不再触发重翻)留 v1.x
+- 通知为 Web Notification;Tauri 原生通知插件在 M6 打包时接入
+- GenDic 对同一草稿的重复提取有上游去重保护(重复点击提取幂等)

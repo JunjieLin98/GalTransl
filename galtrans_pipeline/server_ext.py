@@ -186,6 +186,7 @@ class PipelineManager:
         self._lock = threading.Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
         self._subscribers: list[queue.Queue] = []
+        self._run_queue: list[dict[str, Any]] = []
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue(maxsize=1000)
@@ -215,11 +216,42 @@ class PipelineManager:
         api_key: str = "",
         endpoint: str = "",
         model: str = "",
-    ) -> str:
+        allow_queue: bool = False,
+    ) -> dict[str, Any]:
         if self.has_active():
+            if allow_queue:
+                with self._lock:
+                    self._run_queue.append(
+                        {
+                            "project_dir": project_dir,
+                            "from_step": from_step,
+                            "only": only,
+                            "api_key": api_key,
+                            "endpoint": endpoint,
+                            "model": model,
+                        }
+                    )
+                    position = len(self._run_queue)
+                self.emit("job_queued", {"project_dir": project_dir, "position": position})
+                self.emit("queue_updated", {"length": position})
+                return {"queued": True, "queue_position": position}
             raise PipelineError(
                 "E-CACHE-BUSY", "已有流水线任务在运行,请等待完成或取消后再试。"
             )
+        job_id = secrets.token_urlsafe(8)
+        self._launch_run(job_id, project_dir, from_step, only, api_key, endpoint, model)
+        return {"queued": False, "job_id": job_id}
+
+    def _launch_run(
+        self,
+        job_id: str,
+        project_dir: str,
+        from_step: str = "",
+        only: str = "",
+        api_key: str = "",
+        endpoint: str = "",
+        model: str = "",
+    ) -> None:
         project = PatchProject.load(Path(project_dir))
         profiles = load_profiles(PROFILES_DIR)
         profile = profiles[project.profile_name].apply_override(project.overrides)
@@ -261,6 +293,7 @@ class PipelineManager:
                     job = self._jobs.get(job_id)
                     if job:
                         job["status"] = "done"
+                self._drain_queue()
 
         thread = threading.Thread(target=worker, daemon=True)
         with self._lock:
@@ -272,6 +305,42 @@ class PipelineManager:
             }
         thread.start()
         return job_id
+
+    def _drain_queue(self) -> None:
+        """任务完成后出队下一个排队流水线(FR-F7 顺序执行)。
+
+        在 worker 线程内调用;直接同步启动下一任务,避免与其他入队竞态。
+        """
+        with self._lock:
+            item = self._run_queue.pop(0) if self._run_queue else None
+            length = len(self._run_queue)
+        if item is None:
+            return
+        self.emit("queue_updated", {"length": length})
+        self.emit(
+            "log",
+            {
+                "job_id": "queue",
+                "step": "QUEUE",
+                "message": f"开始执行排队任务:{item['project_dir']}",
+            },
+        )
+        try:
+            self._launch_run(
+                secrets.token_urlsafe(8),
+                item["project_dir"],
+                from_step=item["from_step"],
+                only=item["only"],
+                api_key=item["api_key"],
+                endpoint=item["endpoint"],
+                model=item["model"],
+            )
+        except PipelineError as error:
+            self.emit(
+                "job_failed",
+                {"job_id": "queue", "code": error.code, "message": str(error)},
+            )
+            self._drain_queue()
 
     def cancel(self, job_id: str) -> bool:
         with self._lock:
@@ -318,6 +387,57 @@ class PipelineManager:
                     {"job_id": job_id, "step": "CACHE", "message": f"从缓存重建输出 {count} 个文件"},
                 )
                 self.emit("job_done", {"job_id": job_id, "results": {"rebuilt": count}})
+            except PipelineError as error:
+                self.emit(
+                    "job_failed", {"job_id": job_id, "code": error.code, "message": str(error)}
+                )
+            except Exception as error:  # pragma: no cover
+                self.emit("job_failed", {"job_id": job_id, "code": "unknown", "message": str(error)})
+            finally:
+                with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job:
+                        job["status"] = "done"
+
+        thread = threading.Thread(target=worker, daemon=True)
+        with self._lock:
+            self._jobs[job_id] = {"thread": thread, "cancel_event": threading.Event(), "status": "running"}
+        thread.start()
+        return job_id
+
+    def start_glossary_extract(self, project_dir: str) -> str:
+        """后台跑上游 GenDic,从 gt_input 抽取高频专名生成术语字典草稿。
+
+        草稿写 <project>/项目GPT字典-生成.txt(上游默认 gpt.dict 引用之一);
+        用户确认后由 glossary/confirm 写入正式 项目GPT字典.txt。
+        """
+        from . import glossary
+
+        if self.has_active():
+            raise PipelineError(
+                "E-CACHE-BUSY", "已有任务在运行,请等待完成或取消后再提取术语。"
+            )
+        project = PatchProject.load(Path(project_dir))
+        gt_input = project.subdir("work/gt_project") / "gt_input"
+        if not gt_input.is_dir() or not any(gt_input.glob("*.json")):
+            raise PipelineError(
+                "E-CACHE-EDIT-INVALID",
+                "gt_input 为空,请先在补丁工作台跑到「文本提取」步再提取术语。",
+            )
+        job_id = secrets.token_urlsafe(8)
+
+        def worker() -> None:
+            self.emit(
+                "job_started",
+                {"job_id": job_id, "project_dir": project_dir, "mode": "glossary"},
+            )
+            try:
+                count = glossary.run_gendic(project)
+                self.emit(
+                    "log",
+                    {"job_id": job_id, "step": "GLOSSARY", "message": f"术语草稿生成:{count} 条候选"},
+                )
+                self.emit("job_done", {"job_id": job_id, "results": {"draft": count}})
             except PipelineError as error:
                 self.emit(
                     "job_failed", {"job_id": job_id, "code": error.code, "message": str(error)}
@@ -520,6 +640,25 @@ def handle_pipeline_get(handler, registry) -> None:
         _send_json(handler, payload)
         return
 
+    if path == "/api/pipeline/glossary":
+        from . import glossary
+
+        project_dir = (query.get("project") or [""])[0]
+        try:
+            project = PatchProject.load(Path(project_dir))
+        except (FileNotFoundError, PipelineError) as error:
+            _send_json(handler, {"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        _send_json(
+            handler,
+            {
+                "draft": glossary.read_draft(project),
+                "confirmed": glossary.read_confirmed(project),
+                "draft_exists": glossary.draft_path(project).exists(),
+            },
+        )
+        return
+
     _send_json(handler, {"error": "not found"}, status=HTTPStatus.NOT_FOUND)
 
 
@@ -567,7 +706,11 @@ def handle_pipeline_post(handler, registry) -> None:
             )
             return
         try:
-            project = PatchProject.create(project_dir, game_dir, profile_name, overrides)
+            if (project_dir / "project.yaml").exists():
+                # 已有工程 = 幂等打开,不覆盖步骤状态
+                project = PatchProject.load(project_dir)
+            else:
+                project = PatchProject.create(project_dir, game_dir, profile_name, overrides)
         except PipelineError as error:
             _send_json(
                 handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.BAD_REQUEST
@@ -582,13 +725,14 @@ def handle_pipeline_post(handler, registry) -> None:
     if path == "/api/pipeline/run":
         project_dir = str(body.get("project_dir", ""))
         try:
-            job_id = MANAGER.start_run(
+            result = MANAGER.start_run(
                 project_dir,
                 from_step=str(body.get("from_step", "")),
                 only=str(body.get("only", "")),
                 api_key=str(body.get("api_key", "")),
                 endpoint=str(body.get("endpoint", "")),
                 model=str(body.get("model", "")),
+                allow_queue=bool(body.get("queue", False)),
             )
         except FileNotFoundError as error:
             _send_json(handler, {"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
@@ -598,7 +742,7 @@ def handle_pipeline_post(handler, registry) -> None:
                 handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.BAD_REQUEST
             )
             return
-        _send_json(handler, {"job_id": job_id})
+        _send_json(handler, result)
         return
 
     if path == "/api/pipeline/cancel":
@@ -657,6 +801,30 @@ def handle_pipeline_post(handler, registry) -> None:
         _send_json(handler, {"merged": merged})
         return
 
+    if path == "/api/pipeline/cache/problem-status":
+        from . import cache_editor
+
+        if MANAGER.has_active():
+            _send_json(
+                handler,
+                {"error": "E-CACHE-BUSY", "detail": "任务运行中,暂不能修改问题状态"},
+                status=HTTPStatus.CONFLICT,
+            )
+            return
+        try:
+            project = PatchProject.load(Path(str(body.get("project", ""))))
+            result = cache_editor.set_problem_status(
+                project,
+                name=str(body.get("file", "")),
+                index=int(body.get("index", -1)),
+                status=str(body.get("status", "")),
+            )
+        except PipelineError as error:
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        _send_json(handler, result)
+        return
+
     if path == "/api/pipeline/cache/rebuild":
         project_dir = str(body.get("project", ""))
         try:
@@ -670,6 +838,40 @@ def handle_pipeline_post(handler, registry) -> None:
             _send_json(handler, {"error": error.code, "detail": str(error)}, status=status)
             return
         _send_json(handler, {"job_id": job_id})
+        return
+
+    if path == "/api/pipeline/glossary/extract":
+        project_dir = str(body.get("project", ""))
+        try:
+            job_id = MANAGER.start_glossary_extract(project_dir)
+        except PipelineError as error:
+            status = (
+                HTTPStatus.CONFLICT
+                if error.code == "E-CACHE-BUSY"
+                else HTTPStatus.BAD_REQUEST
+            )
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=status)
+            return
+        _send_json(handler, {"job_id": job_id})
+        return
+
+    if path == "/api/pipeline/glossary/confirm":
+        from . import glossary
+
+        if MANAGER.has_active():
+            _send_json(
+                handler,
+                {"error": "E-CACHE-BUSY", "detail": "任务运行中,暂不能确认术语"},
+                status=HTTPStatus.CONFLICT,
+            )
+            return
+        try:
+            project = PatchProject.load(Path(str(body.get("project", ""))))
+            count = glossary.confirm_entries(project, body.get("entries") or [])
+        except PipelineError as error:
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        _send_json(handler, {"confirmed": count})
         return
 
     if path == "/api/pipeline/restore":

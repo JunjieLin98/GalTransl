@@ -7,19 +7,40 @@ import { StatusBadge } from '../components/StatusBadge';
 import {
   PipelineApiError,
   cancelPipelineRun,
+  confirmGlossary,
   createPipelineProject,
   detectEngine,
+  extractGlossary,
+  fetchGlossary,
   fetchPipelineProfiles,
   fetchPipelineStatus,
   fetchPipelineToken,
   restorePipeline,
   startPipelineRun,
   subscribePipelineEvents,
+  type GlossaryEntry,
+  type GlossaryState,
   type PipelineProfile,
   type PipelineStatus,
 } from '../lib/pipeline';
 
 type Detection = { profile: string; score: number; capability: string; matched: string[] };
+
+/** 系统通知:Web Notification(Tauri WebView2 原生支持);失败静默降级为日志。 */
+function notifySystem(title: string, body: string) {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body });
+    } else if (Notification.permission !== 'denied') {
+      void Notification.requestPermission().then((perm) => {
+        if (perm === 'granted') new Notification(title, { body });
+      });
+    }
+  } catch {
+    // 通知不可用时静默跳过
+  }
+}
 
 const STEP_LABELS: Record<string, string> = {
   DETECT: '引擎检测',
@@ -42,6 +63,8 @@ export function PatchWorkbenchPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<{ code: string; message: string } | null>(null);
+  const [glossary, setGlossary] = useState<GlossaryState | null>(null);
+  const [draftRows, setDraftRows] = useState<GlossaryEntry[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,6 +118,17 @@ export function PatchWorkbenchPage() {
     }
   }, [gameDir]);
 
+  const refreshGlossary = useCallback(async (dir: string) => {
+    if (!dir) return;
+    try {
+      const state = await fetchGlossary(dir);
+      setGlossary(state);
+      setDraftRows(state.draft.slice(0, 100));
+    } catch {
+      // 草稿不存在等情况静默
+    }
+  }, []);
+
   const handleCreateProject = useCallback(async () => {
     setError('');
     try {
@@ -107,11 +141,12 @@ export function PatchWorkbenchPage() {
       setProjectDir(project_dir);
       const st = await fetchPipelineStatus(project_dir);
       setStatus(st);
+      void refreshGlossary(project_dir);
       appendLog(`工程已创建:${project_dir}(引擎 ${profile})`);
     } catch (err) {
       setError(err instanceof PipelineApiError ? `${err.code}: ${err.message}` : String(err));
     }
-  }, [gameDir, profileName, appendLog]);
+  }, [gameDir, profileName, appendLog, refreshGlossary]);
 
   const refreshStatus = useCallback(async (dir: string) => {
     try {
@@ -121,6 +156,45 @@ export function PatchWorkbenchPage() {
       // 状态轮询失败不打断流程
     }
   }, []);
+
+  const handleExtractGlossary = useCallback(async () => {
+    if (!projectDir) return;
+    setRunError(null);
+    try {
+      await extractGlossary(projectDir);
+      appendLog('已提交术语提取任务(上游 GenDic,分词→LLM 抽取→投票)…');
+    } catch (err) {
+      setRunError(
+        err instanceof PipelineApiError
+          ? { code: err.code, message: err.message }
+          : { code: 'unknown', message: String(err) },
+      );
+    }
+  }, [projectDir, appendLog]);
+
+  const updateDraftRow = useCallback((idx: number, patch: Partial<GlossaryEntry>) => {
+    setDraftRows((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+  }, []);
+
+  const removeDraftRow = useCallback((idx: number) => {
+    setDraftRows((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const handleConfirmGlossary = useCallback(async () => {
+    if (!projectDir || draftRows.length === 0) return;
+    setRunError(null);
+    try {
+      const { confirmed } = await confirmGlossary(projectDir, draftRows);
+      appendLog(`已确认 ${confirmed} 条术语写入正式 GPT 字典(下次翻译生效)`);
+      await refreshGlossary(projectDir);
+    } catch (err) {
+      setRunError(
+        err instanceof PipelineApiError
+          ? { code: err.code, message: err.message }
+          : { code: 'unknown', message: String(err) },
+      );
+    }
+  }, [projectDir, draftRows, appendLog, refreshGlossary]);
 
   // SSE 订阅:job 事件驱动状态刷新
   const activeProjectRef = useRef('');
@@ -140,16 +214,30 @@ export function PatchWorkbenchPage() {
         } else if (event.event === 'job_done') {
           setRunning(false);
           appendLog('任务完成 ✓');
+          notifySystem(
+            'GalTransl 任务完成',
+            activeProjectRef.current
+              ? `工程 ${activeProjectRef.current.split(/[\\/]/).pop()} 的任务已完成。`
+              : '后台任务已完成。',
+          );
+          if (event.data.results?.draft !== undefined) {
+            void refreshGlossary(activeProjectRef.current);
+          }
           void refreshStatus(activeProjectRef.current);
         } else if (event.event === 'job_failed') {
           setRunning(false);
           setRunError({ code: event.data.code, message: event.data.message });
           appendLog(`任务失败:[${event.data.code}] ${event.data.message.split('\n')[0]}`);
+          notifySystem('GalTransl 任务失败', `[${event.data.code}] ${event.data.message.split('\n')[0]}`);
+        } else if (event.event === 'job_queued') {
+          appendLog(`任务已加入队列,当前第 ${event.data.position} 位`);
+        } else if (event.event === 'queue_updated') {
+          appendLog(`队列长度:${event.data.length}`);
         }
       },
       (message) => appendLog(`[连接] ${message}`),
     );
-  }, [ready, appendLog, refreshStatus]);
+  }, [ready, appendLog, refreshStatus, refreshGlossary]);
 
   const handleRun = useCallback(
     async (fromStep?: string) => {
@@ -158,7 +246,14 @@ export function PatchWorkbenchPage() {
       }
       setRunError(null);
       try {
-        await startPipelineRun({ project_dir: projectDir, from_step: fromStep });
+        const result = await startPipelineRun({
+          project_dir: projectDir,
+          from_step: fromStep,
+          queue: true,
+        });
+        if (result.queued) {
+          appendLog(`已有任务在运行,本任务已加入队列(第 ${result.queue_position} 位)`);
+        }
       } catch (err) {
         setRunError(
           err instanceof PipelineApiError
@@ -167,7 +262,7 @@ export function PatchWorkbenchPage() {
         );
       }
     },
-    [projectDir],
+    [projectDir, appendLog],
   );
 
   const handleCancel = useCallback(async () => {
@@ -311,6 +406,64 @@ export function PatchWorkbenchPage() {
                   logs.map((line, index) => <div key={`${index}-${line.slice(0, 12)}`}>{line}</div>)
                 )}
               </div>
+            </Panel>
+          )}
+
+          {projectDir && (
+            <Panel title="③ 术语向导(高频专名 → GPT 字典)">
+              <div className="patch-page__row">
+                <Button disabled={running} onClick={() => void handleExtractGlossary()}>
+                  提取术语草稿
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={running || draftRows.length === 0}
+                  onClick={() => void handleConfirmGlossary()}
+                >
+                  确认 {draftRows.length} 条生效
+                </Button>
+                <span className="patch-page__muted">
+                  已确认 {glossary?.confirmed.length ?? 0} 条 ·
+                  草稿 {glossary?.draft.length ?? 0} 条(展示前 {draftRows.length} 条) ·
+                  草稿来自上游 GenDic(分词+LLM 抽取+两轮投票)
+                </span>
+              </div>
+              <p className="patch-page__muted">
+                草稿写入「项目GPT字典-生成.txt」,确认后写入「项目GPT字典.txt」;
+                两者均在上游默认字典引用链中,下次翻译自动作为人设/代词约束生效。
+              </p>
+              {draftRows.length > 0 && (
+                <div className="patch-editor__grid patch-glossary">
+                  <div className="patch-editor__row patch-editor__row--head">
+                    <span>原文(日)</span>
+                    <span>译文(中)</span>
+                    <span>注释</span>
+                    <span>操作</span>
+                  </div>
+                  {draftRows.map((row, idx) => (
+                    <div key={`${row.src}-${idx}`} className="patch-editor__row patch-glossary__row">
+                      <input
+                        className="patch-editor__dst"
+                        value={row.src}
+                        onChange={(event) => updateDraftRow(idx, { src: event.target.value })}
+                      />
+                      <input
+                        className="patch-editor__dst"
+                        value={row.dst}
+                        onChange={(event) => updateDraftRow(idx, { dst: event.target.value })}
+                      />
+                      <input
+                        className="patch-editor__dst"
+                        value={row.note}
+                        onChange={(event) => updateDraftRow(idx, { note: event.target.value })}
+                      />
+                      <Button variant="secondary" onClick={() => removeDraftRow(idx)}>
+                        删除
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Panel>
           )}
 

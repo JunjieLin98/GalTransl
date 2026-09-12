@@ -107,7 +107,9 @@ export type RunPayload = {
   model?: string;
 };
 
-export async function startPipelineRun(payload: RunPayload): Promise<{ job_id: string }> {
+export type RunResult = { queued?: boolean; queue_position?: number; job_id?: string };
+
+export async function startPipelineRun(payload: RunPayload & { queue?: boolean }): Promise<RunResult> {
   return request('POST', '/api/pipeline/run', payload);
 }
 
@@ -159,6 +161,7 @@ export type CacheEntry = {
   proofread_dst: string;
   locked: boolean;
   problem: string;
+  problem_status: '' | 'confirmed' | 'ignored';
 };
 
 export type CacheEntriesPage = {
@@ -220,12 +223,52 @@ export async function rebuildCacheOutput(
   return request('POST', '/api/pipeline/cache/rebuild', { project: projectDir, compact });
 }
 
+// ------------------------------------------------ 问题状态 / 术语向导(M4)
+
+export async function setProblemStatus(payload: {
+  project: string;
+  file: string;
+  index: number;
+  status: '' | 'confirmed' | 'ignored';
+}): Promise<{ file: string; index: number; status: string }> {
+  return request('POST', '/api/pipeline/cache/problem-status', payload);
+}
+
+export type GlossaryEntry = { src: string; dst: string; note: string };
+
+export type GlossaryState = {
+  draft: GlossaryEntry[];
+  confirmed: GlossaryEntry[];
+  draft_exists: boolean;
+};
+
+export async function fetchGlossary(projectDir: string): Promise<GlossaryState> {
+  const encoded = encodeURIComponent(projectDir);
+  return request('GET', `/api/pipeline/glossary?project=${encoded}`);
+}
+
+export async function extractGlossary(projectDir: string): Promise<{ job_id: string }> {
+  return request('POST', '/api/pipeline/glossary/extract', { project: projectDir });
+}
+
+export async function confirmGlossary(
+  projectDir: string,
+  entries: GlossaryEntry[],
+): Promise<{ confirmed: number }> {
+  return request('POST', '/api/pipeline/glossary/confirm', {
+    project: projectDir,
+    entries,
+  });
+}
+
 export type PipelineEvent =
   | { event: 'hello'; data: Record<string, never> }
-  | { event: 'job_started'; data: { job_id: string; project_dir: string } }
+  | { event: 'job_started'; data: { job_id: string; project_dir: string; mode?: string } }
   | { event: 'log'; data: { job_id: string; step: string; message: string } }
   | { event: 'job_done'; data: { job_id: string; results: Record<string, number> } }
-  | { event: 'job_failed'; data: { job_id: string; code: string; message: string } };
+  | { event: 'job_failed'; data: { job_id: string; code: string; message: string } }
+  | { event: 'job_queued'; data: { project_dir: string; position: number } }
+  | { event: 'queue_updated'; data: { length: number } };
 
 /** 订阅 SSE 进度流(一次性票据置于 query)。返回关闭函数。 */
 export function subscribePipelineEvents(
@@ -242,7 +285,15 @@ export function subscribePipelineEvents(
         return;
       }
       source = new EventSource(`${backendBaseUrl()}/api/pipeline/events?ticket=${encodeURIComponent(ticket)}`);
-      for (const name of ['hello', 'job_started', 'log', 'job_done', 'job_failed']) {
+      for (const name of [
+        'hello',
+        'job_started',
+        'log',
+        'job_done',
+        'job_failed',
+        'job_queued',
+        'queue_updated',
+      ]) {
         source.addEventListener(name, (raw) => {
           try {
             const data = JSON.parse((raw as MessageEvent).data);

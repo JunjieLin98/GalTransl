@@ -10,6 +10,7 @@ import {
   fetchCacheFiles,
   fetchPipelineToken,
   rebuildCacheOutput,
+  setProblemStatus,
   subscribePipelineEvents,
   updateCacheEntry,
   type CacheEntriesPage,
@@ -198,6 +199,34 @@ export function TranslationEditorPage() {
     );
   }, [ready, projectDir, refreshFiles]);
 
+  const cycleProblemStatus = useCallback(
+    async (entry: CacheEntry) => {
+      const next =
+        entry.problem_status === ''
+          ? 'confirmed'
+          : entry.problem_status === 'confirmed'
+            ? 'ignored'
+            : '';
+      try {
+        await setProblemStatus({
+          project: projectDir,
+          file: activeFile,
+          index: entry.index,
+          status: next,
+        });
+        setRows((prev) => ({
+          ...prev,
+          [entry.index]: { ...prev[entry.index], problem_status: next } as CacheEntry,
+        }));
+      } catch (err) {
+        setError(
+          err instanceof PipelineApiError ? `${err.code}: ${err.message}` : String(err),
+        );
+      }
+    },
+    [projectDir, activeFile],
+  );
+
   const handleCompact = useCallback(async () => {
     setBusy(true);
     setError('');
@@ -376,9 +405,18 @@ export function TranslationEditorPage() {
                       <span className="patch-editor__src">
                         {row.pre_src}
                         {entry.problem && (
-                          <em className="patch-editor__problem" title={entry.problem}>
-                            ⚠
-                          </em>
+                          <button
+                            type="button"
+                            className={`patch-editor__problem pstatus-${row.problem_status || 'none'}`}
+                            title={`${entry.problem}\n(点击切换:确认 → 忽略 → 清除)`}
+                            onClick={() => void cycleProblemStatus(entry)}
+                          >
+                            ⚠{row.problem_status === 'confirmed'
+                              ? '已确认'
+                              : row.problem_status === 'ignored'
+                                ? '已忽略'
+                                : ''}
+                          </button>
                         )}
                       </span>
                       <textarea
