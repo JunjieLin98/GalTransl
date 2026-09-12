@@ -709,6 +709,17 @@ export function Sidebar({ openProjects, onCloseProject, onCloseOtherProjects, on
         </NavLink>
 
         <NavLink
+          to="/editor"
+          className={({ isActive }) =>
+            `sidebar__nav-item ${isActive ? 'sidebar__nav-item--active' : ''}`
+          }
+          title="双语对照编辑器"
+        >
+          <span className="sidebar__nav-icon">✏️</span>
+          {expanded && <span className="sidebar__nav-label">双语编辑器</span>}
+        </NavLink>
+
+        <NavLink
           to="/backend-profiles"
           className={({ isActive }) =>
             `sidebar__nav-item${!hasBackendProfiles ? ' sidebar__nav-item--notice' : ''} ${isActive ? 'sidebar__nav-item--active' : ''}`

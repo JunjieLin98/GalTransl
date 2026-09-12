@@ -132,6 +132,94 @@ export async function restorePipeline(projectDir: string): Promise<{ restored: n
   return request('POST', '/api/pipeline/restore', { project_dir: projectDir });
 }
 
+// ---------------------------------------------------------------- 缓存编辑(M3)
+
+export type CacheFileSummary = {
+  name: string;
+  entries: number;
+  locked: number;
+  problems: number;
+  untranslated: number;
+  has_append: boolean;
+};
+
+export async function fetchCacheFiles(
+  projectDir: string,
+): Promise<{ files: CacheFileSummary[]; editable: boolean }> {
+  const encoded = encodeURIComponent(projectDir);
+  return request('GET', `/api/pipeline/cache?project=${encoded}`);
+}
+
+export type CacheEntry = {
+  index: number;
+  name: string;
+  pre_src: string;
+  post_src: string;
+  pre_dst: string;
+  proofread_dst: string;
+  locked: boolean;
+  problem: string;
+};
+
+export type CacheEntriesPage = {
+  file: string;
+  total: number;
+  page: number;
+  page_size: number;
+  stats: { entries: number; locked: number; problems: number; untranslated: number };
+  entries: CacheEntry[];
+};
+
+export type CacheEntryFilter = {
+  q?: string;
+  locked?: boolean;
+  problem?: boolean;
+  untranslated?: boolean;
+  page?: number;
+  page_size?: number;
+};
+
+export async function fetchCacheEntries(
+  projectDir: string,
+  file: string,
+  filter: CacheEntryFilter = {},
+): Promise<CacheEntriesPage> {
+  const params = new URLSearchParams({
+    project: projectDir,
+    file,
+    page: String(filter.page ?? 1),
+    page_size: String(filter.page_size ?? 200),
+  });
+  if (filter.q) params.set('q', filter.q);
+  if (filter.locked !== undefined) params.set('locked', filter.locked ? '1' : '0');
+  if (filter.problem !== undefined) params.set('problem', filter.problem ? '1' : '0');
+  if (filter.untranslated !== undefined)
+    params.set('untranslated', filter.untranslated ? '1' : '0');
+  return request('GET', `/api/pipeline/cache/entries?${params.toString()}`);
+}
+
+export async function updateCacheEntry(payload: {
+  project: string;
+  file: string;
+  index: number;
+  pre_src: string;
+  pre_dst?: string;
+  locked?: boolean;
+}): Promise<{ file: string; index: number; pre_dst: string; locked: boolean }> {
+  return request('POST', '/api/pipeline/cache/entry', payload);
+}
+
+export async function compactCacheLogs(projectDir: string): Promise<{ merged: number }> {
+  return request('POST', '/api/pipeline/cache/compact', { project: projectDir });
+}
+
+export async function rebuildCacheOutput(
+  projectDir: string,
+  compact = false,
+): Promise<{ job_id: string }> {
+  return request('POST', '/api/pipeline/cache/rebuild', { project: projectDir, compact });
+}
+
 export type PipelineEvent =
   | { event: 'hello'; data: Record<string, never> }
   | { event: 'job_started'; data: { job_id: string; project_dir: string } }

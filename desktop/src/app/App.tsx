@@ -43,6 +43,11 @@ const NewProjectWizard = lazy(async () => {
   return { default: mod.NewProjectWizard };
 });
 
+const TranslationEditorPage = lazy(async () => {
+  const mod = await import('../pages/TranslationEditorPage');
+  return { default: mod.TranslationEditorPage };
+});
+
 const PatchWorkbenchPage = lazy(async () => {
   const mod = await import('../pages/PatchWorkbenchPage');
   return { default: mod.PatchWorkbenchPage };
@@ -375,6 +380,14 @@ function AppInner({ openProjects, onOpenProject, onCloseProject, onCloseOtherPro
                 element={(
                   <Suspense fallback={<RouteLoadingFallback />}>
                     <PatchWorkbenchPage />
+                  </Suspense>
+                )}
+              />
+              <Route
+                path="/editor"
+                element={(
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <TranslationEditorPage />
                   </Suspense>
                 )}
               />

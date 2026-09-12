@@ -90,3 +90,67 @@ Relirium 全流程在浏览器中验证:
 - 首启向导/API 自检页、人性化错误聚合、只读问题列表(v0.1 完整门)
 - Tauri 打包态(http://tauri.localhost)验证——dev 态已验证,打包态待 M6
 - TRANSLATE 真实回归仍待 API key
+
+---
+
+# M3 进度:缓存锁定 + 双语对照编辑器
+
+## 已完成
+
+### 缓存锁定位(上游受控改造,PR 形态,~15 行)
+- `GalTransl/CSentense.py`:CTrans 新增 `locked` 属性
+- `GalTransl/Cache.py` 三处:
+  - `_build_cache_obj`:locked 透传回缓存 JSON(post_save 全量快照不丢字段)
+  - `get_transCache_from_json`:locked 条目**强制命中**——post_src 变化/重试失败/
+    retran_key/校对模式均不再送回翻译(人工终稿语义);命中后回填 tran.locked
+- 全部标注 `# galTrans:`,可整体作为上游 PR(候选记录在 UPSTREAM.md)
+
+### 增量重翻
+- 无需额外指纹:上游三联键(prev+now+next 的 name+pre_src)天然覆盖
+  "原文变化→重翻";locked 是唯一新增语义
+
+### cache_editor.py(编排层新模块)
+- list_cache_files / load_entries(筛选+分页)/ update_entry(index+pre_src 双校验,
+  tmp+os.replace 原子写;锁定空译文拒绝)/ compact_append_logs(调上游公开函数)/
+  rebuild_output(rebuildr 模式,复制到 work/translated)
+- 单写者原则:append 日志存在 → 读写均拒绝(E-CACHE-BUSY,先合并);
+  活跃任务期间缓存写端点拒绝
+- 新错误码 E-CACHE-EDIT-INVALID
+
+### server_ext.py 新端点(共 6 个)
+- GET cache(文件列表+统计+editable)、cache/entries(筛选分页)
+- POST cache/entry(写回)、cache/compact(合并日志)、cache/rebuild(后台 rebuildr)
+- **修复 M2 bug**:start_run 完成后 job status 永远 running → has_active 永真;
+  现在统一 finally 收尾 + start_run/start_rebuild 前置单活跃检查
+
+### 双语对照编辑器(/editor 页)
+- 工程选择(浏览/手动输入+加载)→ 缓存文件列表(统计+has_append 提示)
+- 条目网格:角色/原文/译文(textarea)/锁定 checkbox/保存状态;问题 ⚠ 标记
+- 筛选:搜索、只看锁定、只看问题、只看未翻译;分页 200/页
+- 交互:改译文失焦自动保存+自动锁定;锁定切换即存;合并日志/重建输出按钮
+- 后台任务日志区(SSE)
+
+### mock LLM(tools/mock_llm.py)——重要基础设施
+- OpenAI 兼容(流式+非流式),理解 ForGal-json jsonline 协议(sig|{"id","dst"})
+- 只处理当前批次输入行(含 src),跳过历史响应行(含 dst)避免串行
+- **无真实 API key 驱动完整翻译会话**:真实缓存(润色 post_src/三联键/分块)
+  由上游亲自写出;mock 驱动下 Relirium 全链路 TRANSLATE→INJECT→PACKAGE 打通,
+  47266 条全翻成功,dist/sc.ypf 产出
+- 后续 CI 无 key 全链路回归的基础
+
+## 浏览器 E2E(M3 闭环,全部通过)
+1. 编辑器加载 Relirium 工程 → 242 个缓存文件列出(统计正确)
+2. 打开文件 → 条目网格渲染;编辑译文 → 自动锁定("已保存 ✓",磁盘验证 locked:true)
+3. 点"重建输出" → rebuildr 从缓存刷写 gt_output + work/translated
+4. **人工定稿译文出现在 gt_output 与 translated 的输出 JSON 中** ✓
+5. live 套件 15/15(含 4 项新增 cache 端点测试);全量 30/30;前端 build 通过
+
+## 发现并修复
+- `_cache_file` 中 `path += ".json"` 对 Path 对象 TypeError → with_name
+- 上游无害告警:CRebuildTranslate 关闭时报 `_shutdown_done` 属性缺失(记录 UPSTREAM.md)
+- E2E 排障教训:netstat head -1 会抓到 ESTABLISHED 行杀错进程;合成事件的
+  React 18 批处理时序要求 blur 前等重渲染(trusted 事件无此问题)
+
+## M3 剩余(按开发计划)
+- 术语向导(M3 计划内第三项)
+- 编辑器增强:虚拟滚动(当前分页)、问题列跳转上游找错面板(M4 集成后)

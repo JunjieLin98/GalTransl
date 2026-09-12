@@ -216,6 +216,10 @@ class PipelineManager:
         endpoint: str = "",
         model: str = "",
     ) -> str:
+        if self.has_active():
+            raise PipelineError(
+                "E-CACHE-BUSY", "已有流水线任务在运行,请等待完成或取消后再试。"
+            )
         project = PatchProject.load(Path(project_dir))
         profiles = load_profiles(PROFILES_DIR)
         profile = profiles[project.profile_name].apply_override(project.overrides)
@@ -252,6 +256,11 @@ class PipelineManager:
                 )
             except Exception as error:  # pragma: no cover
                 self.emit("job_failed", {"job_id": job_id, "code": "unknown", "message": str(error)})
+            finally:
+                with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job:
+                        job["status"] = "done"
 
         thread = threading.Thread(target=worker, daemon=True)
         with self._lock:
@@ -276,6 +285,56 @@ class PipelineManager:
     def has_active(self) -> bool:
         with self._lock:
             return any(job["status"] == "running" for job in self._jobs.values())
+
+    def start_rebuild(self, project_dir: str, compact: bool = False) -> str:
+        """后台重建输出(rebuildr 模式,不调 API);可选先合并 append 日志。
+
+        与 start_run 共享单活跃约束:重建期间缓存不可编辑(写端点被
+        has_active 拦下),保证单写者原则。
+        """
+        from . import cache_editor
+
+        if self.has_active():
+            raise PipelineError(
+                "E-CACHE-BUSY", "已有任务在运行,请等待完成或取消后再重建输出。"
+            )
+        project = PatchProject.load(Path(project_dir))
+        job_id = secrets.token_urlsafe(8)
+
+        def worker() -> None:
+            self.emit(
+                "job_started", {"job_id": job_id, "project_dir": project_dir, "mode": "rebuild"}
+            )
+            try:
+                if compact:
+                    merged = cache_editor.compact_append_logs(project)
+                    self.emit(
+                        "log",
+                        {"job_id": job_id, "step": "CACHE", "message": f"合并了 {merged} 个 append 日志"},
+                    )
+                count = cache_editor.rebuild_output(project)
+                self.emit(
+                    "log",
+                    {"job_id": job_id, "step": "CACHE", "message": f"从缓存重建输出 {count} 个文件"},
+                )
+                self.emit("job_done", {"job_id": job_id, "results": {"rebuilt": count}})
+            except PipelineError as error:
+                self.emit(
+                    "job_failed", {"job_id": job_id, "code": error.code, "message": str(error)}
+                )
+            except Exception as error:  # pragma: no cover
+                self.emit("job_failed", {"job_id": job_id, "code": "unknown", "message": str(error)})
+            finally:
+                with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job:
+                        job["status"] = "done"
+
+        thread = threading.Thread(target=worker, daemon=True)
+        with self._lock:
+            self._jobs[job_id] = {"thread": thread, "cancel_event": threading.Event(), "status": "running"}
+        thread.start()
+        return job_id
 
 
 MANAGER = PipelineManager()
@@ -415,6 +474,52 @@ def handle_pipeline_get(handler, registry) -> None:
         )
         return
 
+    if path == "/api/pipeline/cache":
+        from . import cache_editor
+
+        project_dir = (query.get("project") or [""])[0]
+        try:
+            project = PatchProject.load(Path(project_dir))
+        except (FileNotFoundError, PipelineError) as error:
+            _send_json(handler, {"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        files = cache_editor.list_cache_files(project)
+        _send_json(handler, {"files": files, "editable": not MANAGER.has_active()})
+        return
+
+    if path == "/api/pipeline/cache/entries":
+        from . import cache_editor
+
+        project_dir = (query.get("project") or [""])[0]
+        try:
+            project = PatchProject.load(Path(project_dir))
+        except (FileNotFoundError, PipelineError) as error:
+            _send_json(handler, {"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        def _opt_bool(key: str):
+            raw = (query.get(key) or [""])[0]
+            return raw == "1" if raw in ("0", "1") else None
+
+        try:
+            payload = cache_editor.load_entries(
+                project,
+                name=(query.get("file") or [""])[0],
+                query=(query.get("q") or [""])[0],
+                locked=_opt_bool("locked"),
+                problem=_opt_bool("problem"),
+                untranslated=_opt_bool("untranslated"),
+                page=int((query.get("page") or ["1"])[0]),
+                page_size=int((query.get("page_size") or ["200"])[0]),
+            )
+        except PipelineError as error:
+            _send_json(
+                handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.CONFLICT
+            )
+            return
+        _send_json(handler, payload)
+        return
+
     _send_json(handler, {"error": "not found"}, status=HTTPStatus.NOT_FOUND)
 
 
@@ -499,6 +604,72 @@ def handle_pipeline_post(handler, registry) -> None:
     if path == "/api/pipeline/cancel":
         ok = MANAGER.cancel(str(body.get("job_id", "")))
         _send_json(handler, {"success": ok})
+        return
+
+    if path == "/api/pipeline/cache/entry":
+        from . import cache_editor
+
+        if MANAGER.has_active():
+            _send_json(
+                handler,
+                {"error": "E-CACHE-BUSY", "detail": "任务运行中,缓存暂不可写"},
+                status=HTTPStatus.CONFLICT,
+            )
+            return
+        project_dir = Path(str(body.get("project", "")))
+        try:
+            project = PatchProject.load(project_dir)
+            result = cache_editor.update_entry(
+                project,
+                name=str(body.get("file", "")),
+                index=int(body.get("index", -1)),
+                pre_src=body.get("pre_src"),
+                pre_dst=body.get("pre_dst"),
+                locked=body.get("locked"),
+            )
+        except PipelineError as error:
+            status = (
+                HTTPStatus.CONFLICT
+                if error.code == "E-CACHE-BUSY"
+                else HTTPStatus.BAD_REQUEST
+            )
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=status)
+            return
+        _send_json(handler, result)
+        return
+
+    if path == "/api/pipeline/cache/compact":
+        from . import cache_editor
+
+        if MANAGER.has_active():
+            _send_json(
+                handler,
+                {"error": "E-CACHE-BUSY", "detail": "任务运行中,暂不能合并日志"},
+                status=HTTPStatus.CONFLICT,
+            )
+            return
+        try:
+            project = PatchProject.load(Path(str(body.get("project", ""))))
+            merged = cache_editor.compact_append_logs(project)
+        except PipelineError as error:
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        _send_json(handler, {"merged": merged})
+        return
+
+    if path == "/api/pipeline/cache/rebuild":
+        project_dir = str(body.get("project", ""))
+        try:
+            job_id = MANAGER.start_rebuild(project_dir, compact=bool(body.get("compact")))
+        except PipelineError as error:
+            status = (
+                HTTPStatus.CONFLICT
+                if error.code == "E-CACHE-BUSY"
+                else HTTPStatus.BAD_REQUEST
+            )
+            _send_json(handler, {"error": error.code, "detail": str(error)}, status=status)
+            return
+        _send_json(handler, {"job_id": job_id})
         return
 
     if path == "/api/pipeline/restore":

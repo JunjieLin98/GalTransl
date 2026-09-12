@@ -2,6 +2,7 @@
 
 import json
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -92,6 +93,46 @@ check("status with token", status == 200 and body.get("profile") == "kirikiri", 
 # 9. status 无 token → 401
 status, body = call("GET", "/api/pipeline/status?project_dir=" + proj.replace("\\", "/"))
 check("status without token -> 401", status == 401, f"{status}")
+
+# 10. M3 缓存编辑端点(Relirium 工程,mock 翻译会话已产出真实缓存)
+relirium = r"L:\gal\Relirium -レリリウム- 遺跡と出逢いと冒険と_patch"
+relirium_q = urllib.parse.quote(relirium)
+status, body = call(
+    "GET", "/api/pipeline/cache?project=" + relirium_q,
+    headers={"X-Local-Token": TOKEN},
+)
+cache_files = body.get("files", [])
+check(
+    "cache list has files",
+    status == 200 and len(cache_files) > 200,
+    f"files={len(cache_files)}",
+)
+
+status, body = call(
+    "GET",
+    "/api/pipeline/cache/entries?project=" + relirium_q
+    + "&file=sc__scenario__00_tr.txt.json",
+    headers={"X-Local-Token": TOKEN},
+)
+entry_ok = status == 200 and body.get("total", 0) >= 1
+first_index = body["entries"][0]["index"] if entry_ok else None
+check("cache entries page", entry_ok, f"total={body.get('total')}")
+
+status, body = call(
+    "POST", "/api/pipeline/cache/entry",
+    {
+        "project": relirium,
+        "file": "sc__scenario__00_tr.txt.json",
+        "index": first_index,
+        "locked": True,
+    },
+    headers={"X-Local-Token": TOKEN},
+)
+check("cache entry lock", status == 200 and body.get("locked") is True, str(body)[:120])
+
+status, body = call("POST", "/api/pipeline/cache/entry", {"project": relirium, "file": "x", "index": 0}, headers={"X-Local-Token": TOKEN})
+check("cache entry invalid file -> 400", status == 400, f"{status}")
+
 
 failed = [name for name, ok, _ in RESULTS if not ok]
 print()

@@ -83,3 +83,147 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* ------------------------------------------------ 双语对照编辑器(M3) */
+.patch-editor__files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.patch-editor__file {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.patch-editor__file:hover {
+  background: rgba(127, 127, 127, 0.08);
+}
+
+.patch-editor__file.is-active {
+  border-color: var(--accent-color, #4a7dff);
+  background: rgba(74, 125, 255, 0.08);
+}
+
+.patch-editor__file-name {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.patch-editor__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.patch-editor__search {
+  flex: 0 1 280px;
+}
+
+.patch-editor__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.patch-editor__spacer {
+  flex: 1;
+}
+
+.patch-editor__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.patch-editor__row {
+  display: grid;
+  grid-template-columns: 44px 90px minmax(160px, 1fr) minmax(200px, 1.2fr) 44px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+}
+
+.patch-editor__row:hover {
+  background: rgba(127, 127, 127, 0.06);
+}
+
+.patch-editor__row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-panel, rgba(30, 30, 30, 0.92));
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
+  border-radius: 0;
+}
+
+.patch-editor__src {
+  position: relative;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+}
+
+.patch-editor__problem {
+  margin-left: 6px;
+  font-style: normal;
+  color: #d9a13c;
+  cursor: help;
+}
+
+.patch-editor__dst {
+  width: 100%;
+  min-height: 44px;
+  resize: vertical;
+  padding: 5px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(127, 127, 127, 0.25));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.patch-editor__dst:focus {
+  border-color: var(--accent-color, #4a7dff);
+  outline: none;
+}
+
+.patch-editor__state {
+  font-size: 12px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+  white-space: nowrap;
+}
+
+.patch-editor__state.has-error {
+  color: #e05555;
+}
+
+.patch-editor__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
