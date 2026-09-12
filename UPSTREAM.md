@@ -23,7 +23,10 @@
 
 ## 已发现的上游缺陷(待反馈)
 
-1. **测试回归**:tag 7.4.0 与 main 均存在——`tests/test_translate_refactor_regressions.py` 8 项失败,根因 `GalTransl/Backend/ForGalJsonTranslate.py:186` 引用 `self.max_api_retries`,但该属性在类中未定义(测试构造方式暴露)。非 Python 版本问题(3.13 实测复现,预计 3.11 同样失败)。**处置:CI 暂时 ignore 该文件(ci.yml 有注记);向上游提 issue/PR 后移除。**
+1. **测试回归**:tag 7.4.0 与 main 均存在——`tests/test_translate_refactor_regressions.py` 8 项失败,根因 `GalTransl/Backend/ForGalJsonTranslate.py:186` 引用 `self.max_api_retries`,但该属性在类中未定义(测试构造方式暴露)。非 Python 版本问题(3.13 实测复现,预计 3.11 同样失败)。
+2. **测试回归**:`tests/test_incremental_cache_append.py::test_batch_translate_saves_only_incremental_results` 失败,根因 `GalTransl/Backend/BaseTranslate.py:1271` 调用 `self.pj_config.getProjectDir()`,而该测试的 `SimpleNamespace` mock 未提供该方法。
+
+**处置:CI 暂时 ignore/deselect(ci.yml 有注记);向上游提 issue/PR 后移除。**
 
 ## 同步操作备忘
 

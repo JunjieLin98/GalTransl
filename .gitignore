@@ -26,3 +26,6 @@ galtransl_backend.spec
 /tools/bin/
 /docs/_drafts/
 /.zcode/
+
+# galtrans-pipeline
+galtrans_pipeline.egg-info/
