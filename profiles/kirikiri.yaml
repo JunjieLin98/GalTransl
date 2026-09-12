@@ -28,6 +28,11 @@ steps:
     # 默认仅解常见脚本封包,避免解出 bgm/video 大包;
     # 其他封包用 per-game override 增加(如 "pac/*.ypf")
     archives: ["data.xp3", "scenario*.xp3", "script*.xp3", "append*.xp3", "patch*.xp3", "unencrypted*.xp3"]
+    # 强加密 xp3:msg-tool 退出码 0 但零产物时回退用户自备解密工具
+    # (xp3brute 不随包分发,由用户放入 tools/bin 或 --tools-dir 指定)
+    encrypted_fallback:
+      tool: xp3brute
+      args: "unpack {archive} {out_dir}"
 
   extract:
     tool: msg-tool

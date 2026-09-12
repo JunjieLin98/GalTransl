@@ -126,15 +126,51 @@ class StepExecutor:
     # ------------------------------------------------------------------
     # UNPACK
     # ------------------------------------------------------------------
+    @staticmethod
+    def _count_files(directory: Path) -> int:
+        return sum(1 for item in directory.rglob("*") if item.is_file())
+
+    def _unpack_encrypted_fallback(self, spec: dict[str, Any], archive: Path, out_dir: Path) -> int:
+        """解包工具退出码 0 但无产物(强加密封包的典型形态)→ 回退用户自备解密工具。"""
+        self.progress("UNPACK", f"{archive.name} 解包后无产物,疑似强加密封包")
+        fallback = spec.get("encrypted_fallback") or {}
+        tool = str(fallback.get("tool", "")).strip()
+        args_tmpl = str(fallback.get("args", "")).strip()
+        if not tool or not args_tmpl:
+            raise PipelineError(
+                "E-UNPACK-ENCRYPTED-XP3",
+                f"{archive.name} 解包后无产物(疑似强加密),且 profile 未配置 encrypted_fallback",
+            )
+        args = _render_args(args_tmpl, {"archive": str(archive), "out_dir": str(out_dir)})
+        try:
+            self._run_tool("UNPACK", tool, args)
+        except PipelineError as error:
+            if error.code == "E-EXTRACT-TOOL-MISSING":
+                raise PipelineError(
+                    "E-UNPACK-ENCRYPTED-XP3",
+                    f"{archive.name} 疑似强加密(msg-tool 无产物),回退解密工具不可用:{error}",
+                ) from error
+            raise
+        count = self._count_files(out_dir)
+        if count == 0:
+            raise PipelineError(
+                "E-UNPACK-ENCRYPTED-XP3",
+                f"{archive.name} 回退解密后仍无产物",
+            )
+        self.progress("UNPACK", f"{archive.name} 回退解密成功({count} 文件)")
+        return 1
+
     def step_unpack(self) -> int:
         spec = self.profile.step("unpack")
         tool = spec.get("tool", "msg-tool")
         unpacked = self.project.subdir("work/unpacked")
         total = 0
+        matched_any = False
         for pattern in self.profile.unpack_archives():
             archives = sorted(self.project.game_dir.glob(pattern))
             if not archives:
                 continue
+            matched_any = True
             for archive in archives:
                 stem = archive.stem or archive.name
                 out_dir = unpacked / stem
@@ -144,11 +180,21 @@ class StepExecutor:
                     spec["args"], {"archive": str(archive), "out_dir": str(out_dir)}
                 )
                 self._run_tool("UNPACK", tool, args)
-                total += 1
+                if self._count_files(out_dir) > 0:
+                    total += 1
+                else:
+                    # 退出码 0 但零产物:加密封包下 msg-tool 的行为;工作目录里
+                    # 若已有手动解包产物则视为成功,不覆盖
+                    total += self._unpack_encrypted_fallback(spec, archive, out_dir)
         if total == 0:
+            if not matched_any:
+                raise PipelineError(
+                    "E-UNPACK-NO-ARCHIVE",
+                    f"游戏目录中未找到匹配 unpack.archives 的封包: {self.profile.unpack_archives()}",
+                )
             raise PipelineError(
                 "E-UNPACK-ENCRYPTED-XP3",
-                f"未找到匹配的封包或全部解包失败: {self.profile.unpack_archives()}",
+                "全部封包解包后均无产物,回退解密(若已配置)后仍失败",
             )
         return total
 

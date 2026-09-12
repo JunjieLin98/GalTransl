@@ -430,3 +430,42 @@ msg-tool 源码包。发布说明 release/NOTES-v1.0.0.md:
   (CDN 缓存 ~90s 刷新),安装包直链 200
 - 发布说明链接一律用 blob/v1.0.0/(远端 main 无我们的文档,blob/main 会 404)
 - **发布目标仓库为个人项目 JunjieLin98/GalTransl,不动上游 GalTransl/GalTransl**
+
+---
+
+# 修复:强加密 xp3 静默零产物 + xp3brute 回退接入(v1.0.0 后,2026-09-12)
+
+## 用户报告
+
+本地运行报错,归因 xp3-brute 缺失。复现定位(样例 とける風花,data.xp3 强加密):
+
+1. msg-tool 对不支持的强加密 xp3 **退出码 0 但 work/unpacked/data/ 零产物**
+   (826 文件全部解密失败不视为进程错误)→ UNPACK 误报成功;
+2. 计划 Kirikiri 链第一环"用户自备 xp3brute 解包"(sample-games.md M1 方案)
+   **从未接入编排**——runner.py 已预留其输出死锁对策,但无调用点;
+3. 旧 total==0 分支把"无封包匹配"与"解包失败"混为 E-UNPACK-ENCRYPTED-XP3 误指加密。
+
+## 修复(PR 形态,~70 行)
+
+- **steps.py**:UNPACK 逐封包检查产物数,零产物 → 按 profile
+  `encrypted_fallback`(tool+args)自动回退;回退工具缺失(E-EXTRACT-TOOL-MISSING)
+  转译为 E-UNPACK-ENCRYPTED-XP3 全上下文指引;回退后仍零产物同样报加密。
+  工作目录已有手动解包产物(>0 文件)视为成功,不覆盖。
+  "无封包匹配"拆分为新错误码 **E-UNPACK-NO-ARCHIVE**。
+- **errors.py**:E-UNPACK-ENCRYPTED-XP3 指引重写(①xp3brute.exe 放 tools/bin
+  重跑 UNPACK 自动回退 ②手动解包放 work/unpacked/<封包名>/ 从 EXTRACT 续跑
+  ③责任自负);新增 E-UNPACK-NO-ARCHIVE。
+- **profiles/kirikiri.yaml**:unpack 步骤声明
+  `encrypted_fallback: {tool: xp3brute, args: "unpack {archive} {out_dir}"}`。
+- **architecture.md §3.6** 错误目录同步。
+
+## 验证
+
+- 新增 tests/pipeline/test_unpack_fallback.py **6 场景全过**
+  (成功无回退/回退触发/回退缺失→加密指引/回退仍空/无封包匹配/未配置回退)
+- **真实强加密游戏端到端**:とける風花 data.xp3 → msg-tool 零产物 →
+  xp3brute 回退 70s 解出 **827 文件**(826 资源+xp3-meta.yaml),真名目录
+  (scn/AppConfig.tjs/bgm/font)完整;unencrypted.xp3 照常 397 文件
+- CI 同命令 pytest 全绿(75 passed, 1 deselected)
+- 发布包不受影响:DIST_EXCLUDE 继续排除 xp3brute.exe(不随包分发,
+  仅编排调用用户自备副本)

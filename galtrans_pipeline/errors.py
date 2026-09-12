@@ -9,9 +9,17 @@ GUIDANCE: dict[str, str] = {
         "③带本目录文件清单到项目 issue 反馈引擎适配请求。"
     ),
     "E-UNPACK-ENCRYPTED-XP3": (
-        "封包已加密且自动解密失败。"
-        "处理:①自备 xp3-brute(KrkrzExtract 作者的解密工具)对 xp3 解包后,将解出目录作为已解包工作区重跑;"
-        "②解密工具的使用责任由用户自行承担,本项目不分发解密工具。"
+        "封包已加密且自动解密失败(解包工具无产物,或回退解密工具不可用)。"
+        "处理:①自备 xp3brute.exe(解密工具,本项目不分发)放入 tools/bin/(或用 --tools-dir/GUI 工具目录指定)后重跑 UNPACK,"
+        "将在工作目录找到该工具时自动回退解密;"
+        "②或用解密工具手动解包,将解出文件放入 work/unpacked/<封包名>/ 后从 EXTRACT 步骤继续重跑;"
+        "③解密工具的使用责任由用户自行承担。"
+    ),
+    "E-UNPACK-NO-ARCHIVE": (
+        "游戏目录中未找到匹配 unpack.archives 的封包。"
+        "处理:①确认 game_dir 指向游戏根目录;"
+        "②用 per-game override 增加/调整 unpack.archives 模式(如 'pac/*.xp3');"
+        "③若游戏为已解包目录形态,跳过 UNPACK 从 EXTRACT 重跑。"
     ),
     "E-EXTRACT-NO-SCRIPT": (
         "解包产物中未找到可提取的脚本文件。"

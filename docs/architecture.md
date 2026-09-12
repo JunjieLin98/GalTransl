@@ -206,7 +206,8 @@ INIT → DETECT → UNPACK → EXTRACT → TRANSLATE → INJECT → PACKAGE → 
 | 错误码 | 场景 | 指引(摘要) |
 |---|---|---|
 | E-DETECT-UNKNOWN-ENGINE | 未识别引擎 | 手动选择 profile / 提交 SExtractor 正则需求 / 社区 issue 模板链接 |
-| E-UNPACK-ENCRYPTED-XP3 | 加密 xp3 且无密钥 | 指引用户自备 KrkrExtract/xp3-brute 或提供密钥(责任自负声明) |
+| E-UNPACK-ENCRYPTED-XP3 | 加密 xp3(解包零产物,回退解密工具不可用或仍失败) | 自备 xp3brute.exe 放入 tools/bin 后重跑 UNPACK(自动回退解密);或手动解包产物放入 work/unpacked/<封包名>/ 从 EXTRACT 续跑(责任自负声明) |
+| E-UNPACK-NO-ARCHIVE | 无封包匹配 unpack.archives | 确认 game_dir;per-game override 调整 archives 模式;已解包目录形态从 EXTRACT 续跑 |
 | E-EXTRACT-NO-SCRIPT | 未找到可提取脚本 | 列出已扫描模式;建议手动指定脚本 |
 | E-EXTRACT-TOOL-MISSING | 工具未就绪 | 引导工具箱下载/镜像切换 |
 | E-TRANSLATE-API-AUTH | 401/403 | 检查 key/endpoint 步骤指引 |
