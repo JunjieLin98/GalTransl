@@ -1,0 +1,85 @@
+.patch-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patch-page__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.patch-page__input {
+  flex: 1 1 320px;
+  min-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  background: var(--bg-input, #fff);
+  color: inherit;
+}
+
+.patch-page__detections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.patch-page__detection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.patch-page__muted {
+  opacity: 0.65;
+  font-size: 0.9em;
+}
+
+.patch-page__steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.patch-page__step {
+  min-width: 96px;
+}
+
+.patch-page__log {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-code, rgba(127, 127, 127, 0.08));
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.patch-page__error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+  white-space: pre-wrap;
+}
+
+.patch-page__capability {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

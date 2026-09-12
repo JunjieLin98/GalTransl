@@ -35,6 +35,7 @@
 @import './styles/components/stats-grid.css';
 
 /* ── 7. Page styles ── */
+@import './styles/pages/patch.css';
 @import './styles/pages/home.css';
 @import './styles/pages/translate.css';
 @import './styles/pages/settings.css';

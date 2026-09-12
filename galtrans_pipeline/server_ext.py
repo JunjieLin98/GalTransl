@@ -38,6 +38,21 @@ DEFAULT_TOOLS_DIR = REPO_ROOT / "tools" / "bin"
 
 # ---------------------------------------------------------------- Host 白名单
 ALLOWED_HOSTS = {"localhost", "127.0.0.1"}
+# GUI 自身来源(Tauri v2: dev=127.0.0.1:1420, 打包态=tauri.localhost);
+# token 下发仅允许这些 Origin(外来网页 Origin 为自身域名或 null → 拒绝)
+ALLOWED_ORIGINS = {
+    "http://127.0.0.1:1420",
+    "http://localhost:1420",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+}
+
+
+def origin_allowed(handler) -> bool:
+    origin = (handler.headers.get("Origin") or "").strip()
+    if not origin:
+        return True  # 非浏览器客户端(curl 等);仍受 Host 校验与 token 保护
+    return origin in ALLOWED_ORIGINS
 
 
 def host_allowed(handler) -> bool:
@@ -55,6 +70,7 @@ def host_allowed(handler) -> bool:
 
 
 def _reject_host(handler) -> None:
+    handler._gt_cors_origin = ""  # 拒绝响应不携带任何 CORS 头
     body = json.dumps({"error": "E-AUTH-UNAUTHORIZED", "detail": "invalid host"}).encode()
     handler.send_response(HTTPStatus.FORBIDDEN)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
@@ -266,13 +282,38 @@ MANAGER = PipelineManager()
 
 
 # ---------------------------------------------------------------- HTTP 工具
+def _apply_cors(handler) -> None:
+    """标记响应的 CORS 形态:GUI 白名单 Origin 回显;外来 Origin 抑制(浏览器拒读)。
+
+    头部注入由上游 end_headers 统一按 handler._gt_cors_origin 处理(server.py 受控改造)。
+    """
+    origin = (handler.headers.get("Origin") or "").strip()
+    if origin and origin_allowed(handler):
+        handler._gt_cors_origin = origin
+    else:
+        handler._gt_cors_origin = ""
+
+
 def _send_json(handler, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Content-Length", str(len(body)))
+    _apply_cors(handler)
     handler.end_headers()
     handler.wfile.write(body)
+
+
+def handle_pipeline_options(handler) -> None:
+    """预检:CORS 头由 end_headers 按 handler._gt_cors_origin 统一注入。"""
+    if not host_allowed(handler):
+        _reject_host(handler)
+        return
+    origin = (handler.headers.get("Origin") or "").strip()
+    handler._gt_cors_origin = origin if origin and origin_allowed(handler) else ""
+    handler.send_response(HTTPStatus.NO_CONTENT)
+    handler.send_header("Content-Length", "0")
+    handler.end_headers()
 
 
 def _read_body_json(handler) -> dict:
@@ -293,6 +334,15 @@ def handle_pipeline_get(handler, registry) -> None:
     parsed = urllib.parse.urlparse(handler.path)
     path = parsed.path
     query = urllib.parse.parse_qs(parsed.query)
+
+    if path == "/api/pipeline/token":
+        # GUI 专用:仅放行 Host 白名单 + GUI Origin;外来网页既过不了 Origin,
+        # 也读不到响应(CORS 收敛);本地恶意进程本就与用户同权,不构成增量风险
+        if not origin_allowed(handler):
+            _reject_host(handler)
+            return
+        _send_json(handler, {"token": _TOKEN})
+        return
 
     if path == "/api/pipeline/profiles":
         from .detect import detect_engine
@@ -322,6 +372,7 @@ def handle_pipeline_get(handler, registry) -> None:
         handler.send_response(HTTPStatus.OK)
         handler.send_header("Content-Type", "text/event-stream; charset=utf-8")
         handler.send_header("Cache-Control", "no-cache")
+        _apply_cors(handler)
         handler.end_headers()
         q = MANAGER.subscribe()
         try:

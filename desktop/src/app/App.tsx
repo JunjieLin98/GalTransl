@@ -43,6 +43,11 @@ const NewProjectWizard = lazy(async () => {
   return { default: mod.NewProjectWizard };
 });
 
+const PatchWorkbenchPage = lazy(async () => {
+  const mod = await import('../pages/PatchWorkbenchPage');
+  return { default: mod.PatchWorkbenchPage };
+});
+
 const CONFIG_FILE_KEY = 'galtransl-config-file';
 const OPEN_PROJECTS_KEY = 'galtransl-open-projects';
 const LAST_ACTIVE_PROJECT_KEY = 'galtransl-last-active-project';
@@ -362,6 +367,14 @@ function AppInner({ openProjects, onOpenProject, onCloseProject, onCloseOtherPro
                 element={(
                   <Suspense fallback={<RouteLoadingFallback />}>
                     <PromptTemplatesPage />
+                  </Suspense>
+                )}
+              />
+              <Route
+                path="/patch"
+                element={(
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <PatchWorkbenchPage />
                   </Suspense>
                 )}
               />
