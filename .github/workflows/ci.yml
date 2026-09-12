@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt && pip install -e .
+        run: pip install -r requirements.txt -e . pytest
       # 上游 7.4.0 自带测试回归(UPSTREAM.md 有记录):translate_refactor 8 项
       # (AttributeError: max_api_retries)+ incremental_cache 1 项(mock 缺 getProjectDir)
       # test_server_ext_live.py 是手动 live E2E 脚本(无 __main__ 守卫,import 即自跑
