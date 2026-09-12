@@ -37,3 +37,6 @@ galtrans_pipeline.egg-info/
 # 构建产物
 release/
 desktop/src-tauri/resources/
+
+# 更新签名私钥(绝不入库)
+.tauri/

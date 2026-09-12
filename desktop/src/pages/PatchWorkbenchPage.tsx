@@ -23,24 +23,11 @@ import {
   type PipelineProfile,
   type PipelineStatus,
 } from '../lib/pipeline';
+import { notifySystem } from '../lib/desktop';
 
 type Detection = { profile: string; score: number; capability: string; matched: string[] };
 
-/** 系统通知:Web Notification(Tauri WebView2 原生支持);失败静默降级为日志。 */
-function notifySystem(title: string, body: string) {
-  try {
-    if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body });
-    } else if (Notification.permission !== 'denied') {
-      void Notification.requestPermission().then((perm) => {
-        if (perm === 'granted') new Notification(title, { body });
-      });
-    }
-  } catch {
-    // 通知不可用时静默跳过
-  }
-}
+
 
 const STEP_LABELS: Record<string, string> = {
   DETECT: '引擎检测',

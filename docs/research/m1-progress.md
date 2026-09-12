@@ -307,3 +307,23 @@ Relirium 全流程在浏览器中验证:
   (许可未核实,政策为用户自备)后重打验证,tools/bin 只余
   Xp3Pack.exe/msg_tool.exe/version.dll
 - 桌面端 Rust release 编译 PASS(1m53s,产物 galtransl-desktop.exe 11.7MB)
+
+## M6 补充:自动更新与原生通知(2026-09-12)
+
+- **插件落地**:tauri-plugin-notification / updater / process(Rust+npm 双侧),
+  capabilities 加 notification:default / updater:default / process:allow-restart;
+  Cargo.toml 补 serde_json(updater 配置使 generate_context! 需要)
+- **更新签名**:minisign 密钥对生成于 .tauri/galtransl.key(.gitignore,不入库);
+  公钥内联 tauri.conf.json plugins.updater;endpoints 指向
+  `github.com/JunjieLin98/GalTransl/releases/latest/download/latest.json`
+- **带签名重打 PASS**:产出 setup.exe + **.sig 签名文件**(updater 工作流闭环)
+- **发布流程要点**(v1.0 Release 时用):
+  1. `export TAURI_SIGNING_PRIVATE_KEY=$(cat .tauri/galtransl.key)`(2.0.6 的
+     tauri-cli 不支持 _PATH 变体;installMode 字段勿写,那是 MSI 枚举)
+  2. `npm run tauri:build` → 上传 setup.exe + .sig
+  3. latest.json:{version, notes, pub_date, platforms["windows-x86_64"]=
+     {signature: .sig 内容, url: setup.exe 的 release 直链}}
+- 前端:lib/desktop.ts 封装 notifySystem(Tauri 插件优先/Web fallback)与
+  启动静默更新检查(App.tsx 挂载,dev 态跳过)
+- 已知边界:minisign 私钥空口令(本机生成,建议发布前轮换并加口令);
+  检查更新只提示不自动安装(MVP)

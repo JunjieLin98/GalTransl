@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { checkForUpdateSilent } from '../lib/desktop';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   CUSTOM_BACKGROUND_CHANGE_EVENT,
@@ -114,6 +115,11 @@ function clearLastActiveProject() {
 
 export function App() {
   const [openProjects, setOpenProjects] = useState<string[]>(() => loadOpenProjects());
+
+  // 启动时静默检查更新(仅 Tauri 打包态生效,dev 浏览器态自动跳过)
+  useEffect(() => {
+    void checkForUpdateSilent('0.1.0');
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
