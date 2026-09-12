@@ -2115,6 +2115,13 @@ def build_handler(registry: JobRegistry):
             parsed = urlparse(self.path)
             path = parsed.path
 
+            # galTrans: 流水线扩展路由(Host 白名单与 token 鉴权在 server_ext 内实现)
+            if path.startswith("/api/pipeline"):
+                from galtrans_pipeline.server_ext import handle_pipeline_get
+
+                handle_pipeline_get(self, registry)
+                return
+
             if path == "/":
                 self._send_html(INDEX_HTML)
                 return
@@ -2216,6 +2223,13 @@ def build_handler(registry: JobRegistry):
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
             path = parsed.path
+
+            # galTrans: 流水线扩展路由(Host 白名单与 token 鉴权在 server_ext 内实现)
+            if path.startswith("/api/pipeline"):
+                from galtrans_pipeline.server_ext import handle_pipeline_post
+
+                handle_pipeline_post(self, registry)
+                return
 
             if path.startswith("/api/projects/"):
                 parts = path.split("/", 4)
