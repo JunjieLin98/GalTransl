@@ -23,10 +23,13 @@ jobs:
         run: pip install -r requirements.txt && pip install -e .
       # 上游 7.4.0 自带测试回归(UPSTREAM.md 有记录):translate_refactor 8 项
       # (AttributeError: max_api_retries)+ incremental_cache 1 项(mock 缺 getProjectDir)
+      # test_server_ext_live.py 是手动 live E2E 脚本(无 __main__ 守卫,import 即自跑
+      # 并 sys.exit),pytest 收集会 INTERNALERROR——仅手动运行,不进 CI
       - name: Run tests
         run: >
           python -m pytest tests/ -q
           --ignore=tests/test_translate_refactor_regressions.py
+          --ignore=tests/pipeline/test_server_ext_live.py
           --deselect tests/test_incremental_cache_append.py::IncrementalCacheAppendTests::test_batch_translate_saves_only_incremental_results
         env:
           PYTHONIOENCODING: utf-8

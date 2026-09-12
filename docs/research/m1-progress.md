@@ -360,3 +360,59 @@ Relirium 全流程在浏览器中验证:
 ## 验证
 - npm build 通过;浏览器实测:编辑器页侧栏页签/文件列表/卡片徽章/
   toast 提示全部按上游风格渲染,工作台 CustomSelect 正常
+
+---
+
+# v1.0.0 发布(2026-09-12)
+
+## 发布前置修复(发布过程中发现并当场修复)
+
+1. **CI backend-tests 三连红(自 live E2E 脚本加入起)**:`tests/pipeline/test_server_ext_live.py`
+   是无 `__main__` 守卫的手动 live E2E 脚本(import 即自跑全部 18 项并 `sys.exit`),
+   pytest 收集时触发 INTERNALERROR。修复:ci.yml 加
+   `--ignore=tests/pipeline/test_server_ext_live.py` 并注明仅手动运行。
+   本机实跑该脚本:**18/18 通过**(backend alive 7.4.0/Host 白名单/token/SSE ticket/
+   工程创建/缓存锁定/问题状态/术语,真实样例工程)。
+2. **THIRD-PARTY-NOTICES 两处来源地址失实**(全库排查 + GitHub API 实证):
+   - msg-tool 真实仓库 `lifegpc/msg-tool`(原记录 dnanchev/msgTool 不存在);
+     tag v0.4.0-alpha.3 存在,GPL-3.0
+   - Xp3Pack.exe/version.dll 实为 **KirikiriTools v1.7 构建产物**
+     (`arcusmaximus/KirikiriTools`,MIT,已归档;release 1.7 资产名实证吻合;
+     原记录 icecr4ck/Xp3Pack 不存在)
+3. **工具溯源闭环(GPL §6)**:随包三工具 SHA256 与官方 release 资产逐一比对一致
+   (msg_tool.exe=62fe3967…/Xp3Pack.exe=c6f4a6f4…/version.dll=52745037…),
+   msg-tool v0.4.0-alpha.3 源码包(1.1MB)随 Release 资产附上。
+   README 中的 XD2333 链接为上游原文,GitHub 重定向有效,不改。
+
+## 构建与签名
+
+- **版本号 1.0.0**:tauri.conf.json / package.json / package-lock.json(两处)/
+  Cargo.toml(Cargo.lock 构建时自动同步)
+- **坑:tauri build 在签名口令提示处挂死**。空口令 minisign 密钥必须显式
+  `export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""`,否则(后台/管道 stdin 场景)
+  CLI 在 "Finished 1 bundle" 之后的 updater 签名口令交互处永久挂起——
+  现象是产物已出但 `.sig` 缺失、进程无 CPU 无输出。显式空串后正常:
+  `Finished 1 updater signature`。**此坑补记入发布流程要点。**
+- 带签名重打 PASS:`GalTransl Desktop_1.0.0_x64-setup.exe`(55.8MB)+ `.sig`(432B)
+- 旧 0.1.0 产物清理
+
+## 发布门禁(全绿)
+
+- pytest(CI 同命令,含两处 --ignore + 一处 deselect):**69 passed, 1 deselected**
+- pipeline 套件 43/43;live E2E 18/18
+- npm build(tsc+vite)随 tauri build 通过
+
+## 发布资产(release/dist_out/)
+
+setup.exe + .sig + latest.json(updater 清单,platforms.windows-x86_64,
+signature=.sig 内容,url=release 直链 %20 转义)+ SHA256SUMS.txt +
+msg-tool 源码包。发布说明 release/NOTES-v1.0.0.md:
+**明确 fork 自上游 GalTransl v7.4.0(GPL-3.0)并致谢**、能力等级诚实声明
+(L1/L2 实验/L3/L4)、SmartScreen 无签名公示、用户自备工具声明、
+合规声明(合法持有/TRANSLATION_NOTICE)、已知边界。
+
+## 发布动作
+
+- 提交 release prep → push develop(CI 复验)→ ff main → tag v1.0.0 →
+  push origin → `gh release create -R JunjieLin98/GalTransl`(上传 5 资产)
+- **发布目标仓库为个人项目 JunjieLin98/GalTransl,不动上游 GalTransl/GalTransl**

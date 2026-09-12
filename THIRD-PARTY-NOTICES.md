@@ -1,6 +1,6 @@
 # THIRD-PARTY NOTICES / 第三方组件许可声明
 
-本软件(GalTransl Desktop)是上游 GalTransl(xd2333/GalTransl,GPL-3.0)的分支增强版,
+本软件(GalTransl Desktop)是上游 GalTransl(GalTransl/GalTransl,GPL-3.0)的分支增强版,
 整体以 **GPL-3.0** 发布(见 LICENSE)。以下列出随发布包分发的第三方组件及其许可。
 构建工具(不随产物分发代码)单列于文末。
 
@@ -10,7 +10,7 @@
 
 | 组件 | 许可 | 来源 |
 |---|---|---|
-| GalTransl(上游 v7.4.0) | GPL-3.0 | https://github.com/xd2333/GalTransl |
+| GalTransl(上游 v7.4.0) | GPL-3.0 | https://github.com/GalTransl/GalTransl |
 
 ### Python 库(打包进 galtransl_backend.exe)
 
@@ -36,8 +36,8 @@
 
 | 工具 | 许可 | 来源 |
 |---|---|---|
-| msg-tool | GPL-3.0 | https://github.com/dnanchev/msgTool(GPL 镜像附源码要求:发布时附同版本源码包或书面源码获取路径) |
-| Xp3Pack | 随上游仓库声明(见 docs/research/toolchain-verification.md) | https://github.com/icecr4ck/Xp3Pack |
+| msg-tool(v0.4.0-alpha.3) | GPL-3.0 | https://github.com/lifegpc/msg-tool(GPL 分发要求:同版本源码包随 Release 资产附上) |
+| Xp3Pack.exe / version.dll(KirikiriTools v1.7 构建产物) | MIT | https://github.com/arcusmaximus/KirikiriTools(已归档,release 1.7 资产) |
 
 **用户自备、不随包分发**:xp3-brute(加密 xp3 恢复,许可证未核实)、SExtractor
 (GPL-3.0,长尾兜底场景按需自取)、XUAT 类 Il2Cpp 工具。使用责任归用户。
