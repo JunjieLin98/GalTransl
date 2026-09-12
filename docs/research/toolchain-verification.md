@@ -56,6 +56,14 @@ unpack: msg_tool.exe unpack -t kirikiri-xp3 test.xp3 out_dir  → OK:2,文件字
 - 复用评估:其本体为 ttkbootstrap GUI,内层封装 msg-tool/VNTextPatch/正则模式——本项目编排层直接调用 msg-tool(已实测),GUI 封装无复用必要;其"正则模式"的 per-game 配置样例可作为 L2/长尾适配的参考语料;
 - 托管表结论:**不纳入工具分发**(与上游同 org 的 GPL 工具,用户可选);architecture §6 行更新为"许可已澄清:GPL-3.0;不复用、不分发"。
 
+## 4.5 xp3-brute(加密 xp3 提取;本地自用;**实测攻破样例 3**)
+
+- 定位:xmoezzz/xp3-brute(KrkrzExtract 作者的现代替代),**跨平台、无需运行游戏**(逆向+Win32 模拟+符号执行+暴力),用法 `xp3brute unpack data.xp3 out`;
+- **license = null(仓库无许可证文件)= 保留所有权利**:与 KrkrExtract/xp3-brute 系"用户自备、不分发"的合规定位一致——**二进制与源码不入仓库、不随工具箱分发**,本节仅记录本地自用构建配方;
+- **构建配方**(2026-09-12 实测,依赖链完整记录):Rust 1.98.1(MSVC)→ VS Build Tools VCTools 工作负载(链接器)→ LLVM(libclang,bindgen 用)→ CMake + **Ninja**(unicorn-engine-sys 内置 C 构建必需)→ `cargo build -p xp3-brute --bin xp3brute --release`;注意 windows-gnu 工具链不可行(`windows-sys` 缺 dlltool);
+- **实测结果(样例 3 とける風花 data.xp3,826 条目)**:`solved=826 unresolved=0`,真名与目录结构完整恢复(`scn/01.txt.scn`/`AppConfig.tjs`/`bgm/…`),生成 `xp3-meta.yaml` 完整元数据(v0.3.7,schema krkr-xp3-brute/xp3-meta-v1);解出 scn 为 mdf 包裹 PSB,msg-tool 透明解析;
+- 用法要点:输出含 `xp3-meta.yaml`(元数据+策略声明,含"do-not-rehash-recovered-names");无声模式 `--no-progress`,`--verbose` 出逐条恢复证据。
+
 ## 5. 汇总:profile 参数模板固化表(M1 输入)
 
 | profile 字段 | 实测值 |

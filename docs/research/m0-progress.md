@@ -20,6 +20,7 @@
 | 6 | 真实游戏本地回归样例 | ✅ 完成 | 用户已提供 3 款(マガルミナ/Relirium/とける風花),勘查档案见 [sample-games.md](sample-games.md):①krkrz+PSB(L1 主力,自动解密+append2 递增分支)②Yu-ris 纯文本场景(L1 长尾,FR-C5)③强加密(E-UNPACK-ENCRYPTED-XP3 真实指引案例);**三款正好覆盖 L1/长尾/兜底三条验收线** |
 | 7 | CI 骨架 | ✅ 完成 | `.github/workflows/ci.yml`(backend pytest 3.11+3.13 matrix / frontend build);**发现并绕过上游 8 项自带测试回归**(见 UPSTREAM.md,待向上游反馈) |
 | 8 | PatchProject 路径语义定稿 | ✅ 已在架构文档 | architecture §3.4(schema_version/E-PROJECT-GAME-MISSING),M1 编码时按协议笔记校准 |
+| 9 | xp3-brute 寻找与实测(计划外,用户指令) | ✅ 完成 | 源码构建成功(配方见 toolchain-verification §4.5);**样例 3 强加密 data.xp3 全解**(826/826,真名恢复)→ 三款样例全部 L1,M0 完成度 100% |
 
 ## 关键实测发现(影响后续里程碑)
 
@@ -39,7 +40,7 @@
 | 桌面端 exe 启动实测 | M2 GUI 开工前执行(需下载 release 或本地 Tauri 构建) | M2 前 |
 | BIN 导入回填 live 实测 | M1 长尾样例游戏到位后(plan §6:M1 末前) | M1 |
 | 样例游戏(kag3_blank 裁剪 <5MB) | 工具已就绪,单独工作段执行 | M0 收尾 |
-| 真实游戏样例 ×3+1 | **待用户提供**(合法持有,不入库不分发) | M1 前 |
+| 真实游戏样例 ×3 | ✅ 已提供并勘查(sample-games.md) | 完成 |
 | 上游 8 项测试回归反馈 | 向上游提 issue/PR(我们的首次上游贡献机会) | M1 期间 |
 
 ## 环境记录

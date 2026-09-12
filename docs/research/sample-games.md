@@ -34,16 +34,18 @@
 | M1 回封方案 | `import -t yuris-txt` + `pack -t yuris-ypf`(实测支持双向)→ 生成新 ypf 或外挂目录覆盖(需 M1 验证引擎读取优先级) |
 | 能力等级 | **L1**(ypf pack/import 双向支持已在 CLI help 确认,M1 实测回封) |
 
-## 样例 3:とける風花とシロうさぎ(krkrz,强加密)—— **E-UNPACK-ENCRYPTED-XP3 真实案例**
+## 样例 3:とける風花とシロうさぎ(krkrz,强加密)—— **L1(经 xp3brute 解密,实测攻破)**
 
 | 项 | 实测结果 |
 |---|---|
 | 引擎判定 | Kirikiri(krkrz):xp3+sig+BootStrap+`.cf` |
-| 加密 | data.xp3 **加密且 msg-tool 不支持**(826 文件 Error:"method not supported");`--xp3-game-title` 为**内置标题枚举**(实测确认),本作不在库中;exe 自动 key 亦未覆盖 |
-| 已有补丁 | `unencrypted.xp3` = 中文补丁(398 文件,真名 `01.txt.scn`…PSB)+ **`!scnlist.txt` 场景清单**(UTF-16,可配合 `--xp3-file-list-path` 恢复哈希名)+ version.dll |
-| 可能路径 | ① 用户自备 **xp3-brute**(计划内"用户自备解密工具"路径,E-UNPACK-ENCRYPTED-XP3 指引的真实演练);② `--xp3-file-list-path` + !scnlist 恢复文件名后视解密情况;③ 以 unencrypted.xp3 中文文本做"重翻流水线"演示(非日文原文,仅作流程验证) |
-| 能力等级 | 当前 **L3**(提取受阻)→ 解密解决后升 L1;**作为错误指引路径的真实测试用例**价值极高 |
-| 决策 | M1 用例 ①优先:请用户确认是否可获取 xp3-brute;否则用 ③ 做流程演示 + ② 做文件名恢复实验 |
+| 加密 | data.xp3 强加密,msg-tool 不支持(826 文件 Error);`--xp3-game-title` 为内置标题枚举,本作不在库中 |
+| **xp3brute 实测** | `xp3brute unpack data.xp3 out` → **solved=826 unresolved=0**,全部解出;**真名与目录结构完整恢复**(`scn/01.txt.scn`、`AppConfig.tjs`、`bgm/…`,与已有补丁 !scnlist 完全对应);生成 `xp3-meta.yaml` 完整元数据(v0.3.7) |
+| 脚本格式 | scn 文件为 **mdf 包裹的 PSB**(`mdf\x00` 魔数,krkrz zlib 压缩)——msg-tool 透明处理,`export -t kirikiri-scn` 实测导出**标准 name-message 日文 JSON**(说话人分离,即 GalTransl 原生格式形态) |
+| 已有补丁 | `unencrypted.xp3` = 中文补丁(398 文件,真名)+ `!scnlist.txt`(UTF-16 场景清单)+ version.dll |
+| M1 提取方案 | `xp3brute unpack data.xp3`(一次性,解密缓存)→ `msg_tool.exe export -t kirikiri-scn scn/*.scn` → GalTransl JSON |
+| M1 回封方案 | 修改后 PSB 以恢复的真名重打包(参照 unencrypted.xp3 的覆盖模式,引擎已验证接受 version.dll+覆盖包) |
+| 能力等级 | **L1**(xp3brute 解密 + msg-tool 导出实测通过);xp3brute 构建与合规记录见 toolchain-verification.md §4.5 |
 
 ---
 
@@ -51,11 +53,12 @@
 
 | 维度 | 样例 1 マガルミナ | 样例 2 Relirium | 样例 3 とける風花 |
 |---|---|---|---|
-| L1 全链路 | ✅ 主力 | ✅ 长尾引擎(FR-C5) | — |
-| 加密 xp3 自动解密 | ✅(exe key) | —(无需) | ❌(E-UNPACK-ENCRYPTED-XP3 指引实测) |
+| L1 全链路 | ✅ 主力 | ✅ 长尾引擎(FR-C5) | ✅(xp3brute 解密后) |
+| 加密 xp3 自动解密 | ✅(exe key) | —(无需) | ✅(xp3brute 全解,真名恢复) |
 | patch 递增分支 | ✅(append→append2) | — | ✅(unencrypted 已占) |
-| 多引擎 profile | krkrz+PSB | yuris-txt | krkrz(强加密) |
-| 编码模式 | PSB 内部 Unicode | SJIS→GBK | 待定 |
+| 多引擎 profile | krkrz+PSB | yuris-txt | krkrz(mdf+PSB) |
+| 编码模式 | PSB 内部 Unicode | SJIS→GBK | PSB 内部 Unicode |
+| name 分离 | per-game 指令配置 | yuris-txt | ✅ 原生 name-message |
 
 ## 合规记录
 
