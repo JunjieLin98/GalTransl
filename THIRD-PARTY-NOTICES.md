@@ -1,6 +1,6 @@
 # THIRD-PARTY NOTICES / 第三方组件许可声明
 
-本软件(GalTransl Desktop)是上游 GalTransl(GalTransl/GalTransl,GPL-3.0)的分支增强版,
+本软件(GalTransl Suite)是上游 GalTransl(GalTransl/GalTransl,GPL-3.0)的分支增强版,
 整体以 **GPL-3.0** 发布(见 LICENSE)。以下列出随发布包分发的第三方组件及其许可。
 构建工具(不随产物分发代码)单列于文末。
 

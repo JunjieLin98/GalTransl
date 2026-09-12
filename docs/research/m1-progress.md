@@ -469,3 +469,32 @@ msg-tool 源码包。发布说明 release/NOTES-v1.0.0.md:
 - CI 同命令 pytest 全绿(75 passed, 1 deselected)
 - 发布包不受影响:DIST_EXCLUDE 继续排除 xp3brute.exe(不随包分发,
   仅编排调用用户自备副本)
+
+---
+
+# 品牌定名 GalTransl Suite + README 重写(2026-09-12)
+
+## 动机
+
+README 此前沿用上游原文(上游徽章/前言/教程链接),与"通用汉化套件"的
+实际定位不匹配;产品名 "GalTransl Desktop" 只覆盖桌面端,不覆盖 CLI+编排。
+
+## 改名面(GalTransl Desktop → GalTransl Suite)
+
+- tauri.conf.json:productName / identifier(com.galtransl.suite)/ 窗口标题
+- 桌面端:ConnectionContext 窗口标题×2、index.html title、styles.css/motion.ts 注释
+- 包名:package.json + lock(galtransl-suite)、Cargo.toml + lock;
+  pyproject description;desktop/README.md
+- 版本 1.0.0 → 1.0.1(随 v1.0.1 发布生效;已装 1.0.0 不受影响)
+- **内部保留**:GalTransl 上游核心包名、`galtrans` CLI 命令、
+  galtrans_pipeline 编排包名、仓库地址(均不改,避免无谓 churn)
+- 历史文档中的旧安装包名(m1-progress)按史实保留
+
+## README 重写(中英双份)
+
+- 定位:"通用 Galgame LLM 汉化套件"+流程示意;去掉上游徽章/logo/前言/教程正文
+- 能力等级诚实表(L1 Kirikiri/Yu-ris、L2 Unity 实验、L3/L4)+加密 xp3 自动回退说明
+- 用户自备工具声明(xp3brute/SExtractor/XUAT)
+- 快速开始:桌面安装包 + CLI 示例
+- **上游关系章节:fork 致谢 XD2333、GPL-3.0 继承、UPSTREAM.md、上游教程/模型仍适用**
+- 合规(AI 翻译标注要求沿用上游规范)、已知边界、文档索引

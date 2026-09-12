@@ -1172,7 +1172,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "galtransl-desktop"
+name = "galtransl-suite"
 version = "1.0.0"
 dependencies = [
  "serde",

@@ -1,6 +1,6 @@
 [package]
-name = "galtransl-desktop"
-version = "1.0.0"
+name = "galtransl-suite"
+version = "1.0.1"
 description = "GalTransl desktop client"
 authors = ["GalTransl"]
 edition = "2021"

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "galtrans-pipeline"
 version = "0.1.0"
-description = "galTrans — Galgame LLM 汉化流水线编排层(GalTransl fork)"
+description = "GalTransl Suite — 通用 Galgame LLM 汉化套件编排层(GalTransl fork)"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
 dependencies = ["PyYAML>=6.0", "UnityPy>=1.25"]  # UnityPy: unity profile(M5)文本提取/回封

@@ -1,6 +1,6 @@
-# GalTransl Desktop
+# GalTransl Suite
 
-This folder contains the Tauri desktop shell and the web frontend for GalTransl.
+This folder contains the Tauri desktop shell and the web frontend for GalTransl Suite.
 
 ## Development
 
