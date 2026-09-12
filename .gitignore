@@ -21,3 +21,8 @@ app_settings.json
 galtransl_backend.spec
 /build
 /dist
+
+# galTrans fork additions
+/tools/bin/
+/docs/_drafts/
+/.zcode/
