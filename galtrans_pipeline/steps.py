@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -88,7 +89,8 @@ class StepExecutor:
 
     def _run_tool(self, step_name: str, tool_name: str, args: list[str]):
         tool = self._tool_path(tool_name)
-        argv = [str(tool), *args]
+        # Python 脚本工具(unity_tool/sextractor)用当前解释器驱动
+        argv = ([sys.executable, str(tool)] if tool.suffix == ".py" else [str(tool)]) + args
         self.progress(step_name, "$ " + " ".join(argv))
         result = self.runner.run(argv, cancel_event=self.cancel_event)
         if getattr(result, "cancelled", False):
@@ -376,9 +378,47 @@ class StepExecutor:
             return self._package_patch_xp3(spec, dist, injected)
         if strategy == "repack_archive":
             return self._package_repack_archive(spec, dist, injected)
+        if strategy == "deploy":
+            return self._package_deploy(spec)
         raise PipelineError(
             "E-INVALID-PROFILE", f"未知 package.strategy: {strategy}"
         )
+
+    def _package_deploy(self, spec: dict[str, Any]) -> int:
+        """Unity deploy 策略(FR-C7,实验性):强制备份后替换游戏目录文件。
+
+        injected/ 下每个文件按文件名在游戏目录递归定位唯一原件:
+        复制到 backup/(保留相对路径,供 restore 通用步骤还原)后再替换。
+        找不到或多处同名 → 报错不落盘(避免误写)。
+        """
+        game_dir = self.project.check_game_dir()
+        backup = self.project.project_dir / "backup"
+        injected = self.project.subdir("work/injected")
+        files = [p for p in injected.rglob("*") if p.is_file()]
+        if not files:
+            raise PipelineError(
+                "E-TRANSLATE-OUTPUT-MISSING", "injected/ 为空,没有可部署的产物"
+            )
+        count = 0
+        for src in files:
+            matches = [p for p in game_dir.rglob(src.name) if p.is_file()]
+            if len(matches) != 1:
+                raise PipelineError(
+                    "E-UNITY-DEPLOY-AMBIGUOUS",
+                    f"{src.name} 在游戏目录匹配到 {len(matches)} 个文件"
+                    f"(需恰好 1 个);请在 per-game override 中用完整相对路径声明 archive",
+                )
+            target = matches[0]
+            rel = target.relative_to(game_dir)
+            backup_path = backup / rel
+            backup_path.parent.mkdir(parents=True, exist_ok=True)
+            if not backup_path.exists():
+                shutil.copy2(target, backup_path)
+            shutil.copy2(src, target)
+            self.progress("PACKAGE", f"已部署 {rel}(原文件已备份)")
+            count += 1
+        self._write_dist_docs(self.project.subdir("dist"))
+        return count
 
     def _patch_name(self, base: str = "patch") -> str:
         """游戏已有同名补丁时递增命名(FR-C4:patch2 分支)。"""

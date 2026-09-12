@@ -30,7 +30,9 @@ def detect_engine(
                 score += 2
                 matched.append(f"{pattern}×{count}")
         for file_name in spec.get("files", []) or []:
-            if (game_dir / file_name).is_file():
+            # glob 语义:字面名与旧版直查等价,同时支持 "*/xxx.assets" 一层通配
+            count = _glob_count(game_dir, file_name)
+            if count:
                 score += 2
                 matched.append(file_name)
         for hint in spec.get("hints", []) or []:

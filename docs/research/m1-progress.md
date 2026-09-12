@@ -208,3 +208,46 @@ Relirium 全流程在浏览器中验证:
   深度整合(忽略的问题不再触发重翻)留 v1.x
 - 通知为 Web Notification;Tauri 原生通知插件在 M6 打包时接入
 - GenDic 对同一草稿的重复提取有上游去重保护(重复点击提取幂等)
+
+---
+
+# M5 进度:Unity 最小版(spike 定案 + TextAsset 工具链)
+
+## Spike 定案(commit 见 git log)
+
+**选型 UnityPy 1.25.3,AssetsTools.NET 不采用。** 详见 docs/research/unity-spike.md:
+- 真实 bundle(UnityPy 测试样本 char_118_yuki.ab)实测:读→改字段→
+  **容器级 lz4 写回→重载修改持久化 PASS**(704,951→704,974 字节)
+- 1.25 API 形态与旧教程差异大(env.save(pack,out_path) 而非 env.file.save())已归档
+- AssetsTools.NET 不做 A/B 实测,依据(调研+架构成本)已诚实记录
+
+## 交付
+
+- **tools/unity_tool.py**:export(TextAsset→GalTransl JSON,_asset 分组标记)/
+  import(按 _asset 重组写回 m_Script,容器级保存)/ copy(UNPACK 只读复制)
+  - 内容格式支持 JSON 数组 [{name,message}] 与 TSV;其它 E-UNITY-FORMAT 指引
+  - 输出 JSON 的 _asset 字段经上游 update_json_with_transList 原位保留
+    (CSerialize.py 已核实)——单 bundle 多 TextAsset 场景成立
+- **profiles/unity.yaml**(L2 实验性):detect(*/resources.assets 等 glob,
+  detect.py files 增强为 glob 语义、向后兼容)/ copy / export / import +
+  **package strategy: deploy**
+- **强制备份+restore**:_package_deploy 替换游戏目录文件前强制复制原件到
+  backup/(保留相对路径),同名多匹配拒绝部署(E-UNITY-DEPLOY-AMBIGUOUS);
+  restore 走 M1 通用步骤
+- **_run_tool 增强**:.py 工具以 sys.executable 驱动(unity_tool/sextractor 通用)
+- 新错误码:E-UNITY-FORMAT、E-UNITY-DEPLOY-AMBIGUOUS
+- 依赖声明:requirements.txt / pyproject.toml + UnityPy
+- Il2Cpp 引导:docs/research/unity-il2cpp.md(TextAsset 不受 Il2Cpp 影响;
+  代码内嵌文本→XUAT 路线,工具自备政策与 xp3-brute 一致)
+
+## 测试
+
+- 单元 test_unity_tool.py:TSV/JSON 解析、重组序列化(未知字段原位保留)、
+  CLI 契约;全量 43/43;前端 build 通过
+- CLI 实测:copy ✓;export 对无 TextAsset bundle 正确报 E-EXTRACT-NO-SCRIPT ✓
+
+## 诚实边界
+
+- 真实 Unity 游戏全链路回归待样例(三款样例游戏均为 krkr/Yu-ris);
+  TextAsset 内容格式的真实多样性是 L2"受限"的边界声明
+- data.unity3d 容器型文件需 per-game override 扩 input_glob(profile 注释已写)

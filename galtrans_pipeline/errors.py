@@ -68,6 +68,16 @@ GUIDANCE: dict[str, str] = {
         "没有可用的备份可供恢复。"
         "处理:确认 backup/ 目录存在且非空;restore 仅在执行过写回类步骤后可用。"
     ),
+    "E-UNITY-FORMAT": (
+        "Unity TextAsset 的内容不是受支持的格式(当前支持 JSON 数组 [{name,message}] 或 TSV)。"
+        "处理:确认该 TextAsset 是否为对话文本;其他格式(纯文本/自定义结构)暂不支持,"
+        "可在 per-game override 中排除该文件或用 L4 模式自备 JSON 翻译。"
+    ),
+    "E-UNITY-DEPLOY-AMBIGUOUS": (
+        "部署时在游戏目录找到 0 个或多个同名文件,无法唯一定位。"
+        "处理:在 per-game override 的 unpack.archives 中写完整相对路径(相对游戏根),"
+        "并确保没有同名文件散布在多个目录。"
+    ),
     "E-INVALID-PROFILE": (
         "引擎 profile 配置无效。"
         "处理:检查 profiles/ 下 YAML 的必填字段(profile/capability/steps);参考 kirikiri.yaml 结构。"

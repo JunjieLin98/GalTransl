@@ -44,6 +44,8 @@ TOOL_SPECS: dict[str, ToolSpec] = {
     ),
     "xp3brute": ToolSpec("xp3brute", "xp3brute.exe", sha256=None),
     "sextractor": ToolSpec("sextractor", "run.py", sha256=None),
+    # 本仓库自有 Python 工具(M5);由 _run_tool 以当前解释器驱动,无需校验和
+    "unity_tool": ToolSpec("unity_tool", "unity_tool.py", sha256=None),
 }
 
 
