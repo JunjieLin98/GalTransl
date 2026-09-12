@@ -411,8 +411,22 @@ msg-tool 源码包。发布说明 release/NOTES-v1.0.0.md:
 (L1/L2 实验/L3/L4)、SmartScreen 无签名公示、用户自备工具声明、
 合规声明(合法持有/TRANSLATION_NOTICE)、已知边界。
 
-## 发布动作
+## 发布动作(实际执行)
 
-- 提交 release prep → push develop(CI 复验)→ ff main → tag v1.0.0 →
-  push origin → `gh release create -R JunjieLin98/GalTransl`(上传 5 资产)
+- 提交 release prep → push develop → CI 复验:
+  **又暴露一真因——backend-tests 从未真正跑过**(安装步骤漏装 pytest,
+  此前三连红皆此因;live 脚本排除也一并落地)。修复后 CI 全绿
+  (run 34701758955,conclusion success)
+- tag **v1.0.0**(annotated)打在 develop 发布提交 29c2c5e 并推送
+- **main 未 ff**:origin/main 已被同步到上游新 main(98ee841,含上游
+  PR #212 等 7 个新提交,基于 v7.4.0 fork 点之上),ff 推送被拒;
+  不强推,发布以 tag 为准。本地 main 恢复跟踪 origin/main
+- `gh release create v1.0.0 -R JunjieLin98/GalTransl --latest` 上传 5 资产:
+  https://github.com/JunjieLin98/GalTransl/releases/tag/v1.0.0
+- **坑:GitHub 自动把资产名空格转为点**(`GalTransl.Desktop_....exe`),
+  latest.json 里按空格 %20 写的下载 URL 变 404——改用点号名重传
+  latest.json/SHA256SUMS 后修正
+- **端到端验证**:releases/latest/download/latest.json 返回 1.0.0 清单
+  (CDN 缓存 ~90s 刷新),安装包直链 200
+- 发布说明链接一律用 blob/v1.0.0/(远端 main 无我们的文档,blob/main 会 404)
 - **发布目标仓库为个人项目 JunjieLin98/GalTransl,不动上游 GalTransl/GalTransl**
